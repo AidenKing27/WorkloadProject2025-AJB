@@ -40,7 +40,6 @@ public class WorkloadService : IWorkloadService
     {
         return _context.Workloads
             .Include(x => x.Course)
-            .ThenInclude(x => x.Term)
             .Include(x => x.FacultyMember)
             .ThenInclude(x => x.WorkloadCategory)
             .ToListAsync(cancellationToken);

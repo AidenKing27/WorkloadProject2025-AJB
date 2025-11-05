@@ -12,8 +12,8 @@ using WorkloadProject2025.Data;
 namespace WorkloadProject2025.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251024200827_Test")]
-    partial class Test
+    [Migration("20251105231344_NewTables")]
+    partial class NewTables
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -241,14 +241,9 @@ namespace WorkloadProject2025.Migrations
                     b.Property<int>("ProgramId")
                         .HasColumnType("int");
 
-                    b.Property<int>("TermId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ProgramId");
-
-                    b.HasIndex("TermId");
 
                     b.ToTable("Courses");
                 });
@@ -283,6 +278,9 @@ namespace WorkloadProject2025.Migrations
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsFullTime")
+                        .HasColumnType("bit");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -382,18 +380,24 @@ namespace WorkloadProject2025.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("Hours")
+                    b.Property<int?>("Hours")
                         .HasColumnType("int");
 
                     b.Property<string>("Section")
                         .IsRequired()
+                        .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
+
+                    b.Property<int>("TermId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CourseId");
 
                     b.HasIndex("FacultyEmail");
+
+                    b.HasIndex("TermId");
 
                     b.ToTable("Workloads");
                 });
@@ -482,15 +486,7 @@ namespace WorkloadProject2025.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WorkloadProject2025.Data.Models.Term", "Term")
-                        .WithMany()
-                        .HasForeignKey("TermId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Program");
-
-                    b.Navigation("Term");
                 });
 
             modelBuilder.Entity("WorkloadProject2025.Data.Models.Department", b =>
@@ -540,9 +536,17 @@ namespace WorkloadProject2025.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("WorkloadProject2025.Data.Models.Term", "Term")
+                        .WithMany()
+                        .HasForeignKey("TermId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Course");
 
                     b.Navigation("FacultyMember");
+
+                    b.Navigation("Term");
                 });
 
             modelBuilder.Entity("WorkloadProject2025.Data.Models.Department", b =>

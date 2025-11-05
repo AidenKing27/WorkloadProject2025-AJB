@@ -12,7 +12,5 @@ public class Course
     [Required(ErrorMessage = "You must select a program")]
     public int? ProgramId { get; set; }
     public ProgramOfStudy Program { get; set; }
-    [Required(ErrorMessage = "You must select a term")]
-    public int? TermId { get; set; }
-    public Term Term { get; set; }
+    
 }

@@ -11,6 +11,9 @@ public class Workload
     [Required(ErrorMessage = "You must select a course")]
     public int? CourseId { get; set; }
     public Course Course { get; set; }
+    [Required(ErrorMessage = "You must select a term")]
+    public int? TermId { get; set; }
+    public Term Term { get; set; }
     public CourseType CourseType { get; set; }
     [MaxLength(1)]
     public string Section { get; set; }

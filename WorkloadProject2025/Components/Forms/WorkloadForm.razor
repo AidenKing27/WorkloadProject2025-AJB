@@ -70,21 +70,37 @@
                 </MudSelect>
 
                 <MudSelect Label="Course"
-                                   @bind-Value="workload.CourseId"
-                                   For="@(() => workload.CourseId)"
-                                   T="int?"
-                                   Class="mb-2"
-                                   Required="true"
-                                   Immediate="true"
-                                   Dense="true"
-                                   Modal="true"
-                                   Adornment="Adornment.Start"
-                                   AdornmentIcon="@Icons.Material.Filled.Book">
-                            @foreach (var c in GetFilteredCourses())
-                            {
-                                <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
-                            }
-                        </MudSelect>
+                           @bind-Value="workload.CourseId"
+                           For="@(() => workload.CourseId)"
+                           T="int?"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Dense="true"
+                           Modal="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.Book">
+                    @foreach (var c in GetFilteredCourses())
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect Label="Term"
+                           @bind-value="workload.TermId"
+                           For="@(() => workload.TermId)"
+                           T="int?"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.List">
+                    <MudSelectItem T="int?" Value="@(null)">Select a Term</MudSelectItem>
+                    @foreach (var t in Terms)
+                    {
+                        <MudSelectItem T="int?" Value="@t.Id">@t.Name</MudSelectItem>
+                    }
+                </MudSelect>
 
                 <MudGrid Spacing="2">
                     <MudItem xs="6">
@@ -117,6 +133,10 @@
                     </MudItem>
                 </MudGrid>
 
+                <ValidationMessage For="@(() => workload.FacultyEmail)" />
+                <ValidationMessage For="@(() => workload.CourseId)" />
+                <ValidationMessage For="@(() => workload.TermId)" />
+
             </MudStack>
 
             <MudCardActions Class="mt-4 d-flex justify-center">
@@ -147,6 +167,8 @@
     public List<ProgramOfStudy> Programs { get; set; }
     [Parameter]
     public List<Course> Courses { get; set; }
+    [Parameter]
+    public List<Term> Terms { get; set; }
 
     private Workload workload { get; set; } = new Workload();
     private School tmpSchool;

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WorkloadProject2025.Migrations
 {
     /// <inheritdoc />
-    public partial class Test : Migration
+    public partial class NewTables : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -228,7 +228,8 @@ namespace WorkloadProject2025.Migrations
                     FirstName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     LastName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    WorkloadCategoryId = table.Column<int>(type: "int", nullable: false)
+                    WorkloadCategoryId = table.Column<int>(type: "int", nullable: false),
+                    IsFullTime = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -269,8 +270,7 @@ namespace WorkloadProject2025.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Hours = table.Column<int>(type: "int", nullable: false),
-                    ProgramId = table.Column<int>(type: "int", nullable: false),
-                    TermId = table.Column<int>(type: "int", nullable: false)
+                    ProgramId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -279,12 +279,6 @@ namespace WorkloadProject2025.Migrations
                         name: "FK_Courses_ProgramsOfStudy_ProgramId",
                         column: x => x.ProgramId,
                         principalTable: "ProgramsOfStudy",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Courses_Terms_TermId",
-                        column: x => x.TermId,
-                        principalTable: "Terms",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -297,9 +291,10 @@ namespace WorkloadProject2025.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     FacultyEmail = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     CourseId = table.Column<int>(type: "int", nullable: false),
+                    TermId = table.Column<int>(type: "int", nullable: false),
                     CourseType = table.Column<int>(type: "int", nullable: false),
-                    Section = table.Column<string>(type: "nvarchar(1)", nullable: false),
-                    Hours = table.Column<int>(type: "int", nullable: false)
+                    Section = table.Column<string>(type: "nvarchar(1)", maxLength: 1, nullable: false),
+                    Hours = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -315,6 +310,12 @@ namespace WorkloadProject2025.Migrations
                         column: x => x.FacultyEmail,
                         principalTable: "Faculty",
                         principalColumn: "Email",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Workloads_Terms_TermId",
+                        column: x => x.TermId,
+                        principalTable: "Terms",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -363,11 +364,6 @@ namespace WorkloadProject2025.Migrations
                 column: "ProgramId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Courses_TermId",
-                table: "Courses",
-                column: "TermId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Departments_SchoolId",
                 table: "Departments",
                 column: "SchoolId");
@@ -391,6 +387,11 @@ namespace WorkloadProject2025.Migrations
                 name: "IX_Workloads_FacultyEmail",
                 table: "Workloads",
                 column: "FacultyEmail");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Workloads_TermId",
+                table: "Workloads",
+                column: "TermId");
         }
 
         /// <inheritdoc />
@@ -427,10 +428,10 @@ namespace WorkloadProject2025.Migrations
                 name: "Faculty");
 
             migrationBuilder.DropTable(
-                name: "ProgramsOfStudy");
+                name: "Terms");
 
             migrationBuilder.DropTable(
-                name: "Terms");
+                name: "ProgramsOfStudy");
 
             migrationBuilder.DropTable(
                 name: "WorkloadCategories");
