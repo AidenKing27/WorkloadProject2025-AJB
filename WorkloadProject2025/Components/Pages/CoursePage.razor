@@ -1,0 +1,89 @@
+﻿@page "/coursepage"
+
+@inject ProgramOfStudyService programService
+@inject CourseService courseService
+@inject TermService termService
+@inject IDialogService dialogService
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6" Class="font-semibold">Current Courses</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenFormDialog">Add New Course</MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudDataGrid Items="@courses"
+                     Dense="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Course" />
+                <PropertyColumn Property="x => x.Program.Name" Title="Program" />
+                <PropertyColumn Property="x => x.Term.Name" Title="Term" />
+                <PropertyColumn Property="x => x.Hours" Title="Hours" />
+                <TemplateColumn CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudStack Row>
+                            <MudButton Size="@Size.Small" Variant="@Variant.Filled" Color="@Color.Secondary"
+                                       OnClick="() => DeleteRecord(context.Item)">Delete</MudButton>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    private List<ProgramOfStudy> programs = new List<ProgramOfStudy>();
+    private List<Course> courses = new List<Course>();
+    private List<Term> terms = new List<Term>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        terms = await termService.GetAllAsync();
+        programs = await programService.GetAllAsync();
+        courses = await courseService.GetAllAsync();
+    }
+
+    private async Task OpenFormDialog()
+    {
+        var parameters = new DialogParameters<CourseForm>
+        {
+            { x => x.Programs, programs },
+            { x => x.Terms, terms }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await dialogService.ShowAsync<CourseForm>("Add New Course", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await ReloadData();
+        }
+    }
+
+    private async Task<bool> DeleteRecord(Course course)
+    {
+        bool result = await courseService.DeleteAsync(course);
+        await ReloadData();
+
+        return result;
+    }
+
+    public async Task ReloadData()
+    {
+        courses = await courseService.GetAllAsync();
+        StateHasChanged();
+    }
+}

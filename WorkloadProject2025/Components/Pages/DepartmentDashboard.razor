@@ -1,0 +1,511 @@
+﻿@page "/departmentdashboard"
+
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Department Dashboard</PageTitle>
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h4" Class="font-semibold">Department Dashboard</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+
+    <MudCardContent>
+@*         <MudGrid Justify="Justify.Center">
+            <MudItem Xs="12" Sm="6" Md="4" Lg="3">
+                <MudCard Class="hover-card text-center py-6" @onclick="@(() => Navigation.NavigateTo("programofstudypage"))">
+                    <MudIcon Icon="@Icons.Material.Filled.MenuBook" FontSize="70px" Color="@Color.Primary" />
+                    <MudText Typo="Typo.h6" Class="mt-2">Programs</MudText>
+                    <MudText Typo="Typo.body2">Programs</MudText>
+                </MudCard>
+            </MudItem>
+            <MudItem Xs="12" Sm="6" Md="4" Lg="3">
+                <MudCard Class="hover-card text-center py-6" @onclick="@(() => Navigation.NavigateTo("coursepage"))">
+                    <MudIcon Icon="@Icons.Material.Filled.Book" FontSize="70px" Color="@Color.Secondary" />
+                    <MudText Typo="Typo.h6" Class="mt-2">Courses</MudText>
+                    <MudText Typo="Typo.body2">Courses</MudText>
+                </MudCard>
+            </MudItem>
+            <MudItem Xs="12" Sm="6" Md="4" Lg="3">
+                <MudCard Class="hover-card text-center py-6" @onclick="@(() => Navigation.NavigateTo("facultypage"))">
+                    <MudIcon Icon="@Icons.Material.Filled.Person" FontSize="70px" Color="@Color.Tertiary" />
+                    <MudText Typo="Typo.h6" Class="mt-2">Faculty</MudText>
+                    <MudText Typo="Typo.body2">Faculty</MudText>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-6" />
+ *@
+        <!-- Department select + showing count (DROP-DOWN SHOWS CODE ONLY as requested) -->
+        <MudGrid AlignItems="AlignItems.Center">
+            <MudItem Xs="12" Sm="6" Md="8">
+                <MudSelect T="string" Label="Select Department" @bind-Value="SelectedDepartment" Dense="true" Placeholder="Choose Department">
+                    @foreach (var dep in departments)
+                    {
+                        <MudSelectItem Value="@dep">@dep</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem Xs="12" Sm="6" Md="4" Class="d-flex justify-end align-items-center">
+                <MudText Typo="Typo.caption" Class="me-3">Showing @KpiFacultyCount professors</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@ExportCsv">
+                    <MudIcon Icon="@Icons.Material.Filled.FileDownload" />&nbsp;Export CSV
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-4" />
+
+        <MudGrid Class="mb-4">
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle2">Faculty in Dept</MudText>
+                    <MudText Typo="Typo.h5">@KpiFacultyCount</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle2">Total Dept Hours</MudText>
+                    <MudText Typo="Typo.h5">@KpiDeptHours</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle2">Avg Hours</MudText>
+                    <MudText Typo="Typo.h5">@KpiAvgHours</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle2">Busiest</MudText>
+                    <MudText Typo="Typo.h6">@KpiBusiestName</MudText>
+                    <MudText Typo="Typo.caption">@KpiBusiestHours hrs</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @if (!string.IsNullOrEmpty(SelectedDepartment))
+        {
+            <MudGrid>
+                <MudItem Xs="12" Md="6">
+                    <MudText Typo="Typo.h6" Align="Align.Center" Class="mb-2">
+                        📊 Hours Breakdown - @SelectedDepartment
+                    </MudText>
+
+                    <MudPaper Class="pa-4">
+                        <MudChart ChartType="ChartType.Pie"
+                                  InputData="@data"
+                                  InputLabels="@labels"
+                                  @bind-SelectedIndex="Index"
+                                  Height="320px"
+                                  Width="100%" />
+                    </MudPaper>
+
+                    @if (Index >= 0 && Index < displayNamesForLabels.Length)
+                    {
+                        <MudText Class="mt-2">Selected: <b>@displayNamesForLabels[Index]</b> — @data[Index] hrs</MudText>
+                    }
+                    else
+                    {
+                        <MudText Class="mt-2" Color="Color.Secondary">Hover a slice to see professor and hours</MudText>
+                    }
+                </MudItem>
+
+                <MudItem Xs="12" Class="mt-4">
+                    <MudText Typo="Typo.h6" Class="mb-2">Faculty breakdown</MudText>
+                    <table class="mud-table mud-table-root" style="width:100%; border-collapse:collapse;">
+                        <thead class="mud-table-head">
+                            <tr style="text-align:left;">
+                                <th style="width:40px;">#</th>
+                                <th>Faculty</th>
+                                <th>Dept Hours</th>
+                                <th>Total Hours</th>
+                                <th>Semester</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var idx = 1;
+                                var rows = FilteredWorkloads.ToList();
+                                if (!rows.Any())
+                                {
+                                    <tr><td colspan="5"><em>No faculty rows for this selection.</em></td></tr>
+                                    ;
+                                }
+                                else
+                                {
+                                    foreach (var r in rows)
+                                    {
+                                        <tr>
+                                            <td>@idx</td>
+                                            <td>@r.Faculty</td>
+                                            <td>@GetHoursByDept(r, SelectedDepartment)</td>
+                                            <td>@r.TOTAL</td>
+                                            <td>@r.Semester</td>
+                                        </tr>
+                                        ;
+                                        idx++;
+                                    }
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudCardContent>
+</MudCard>
+
+<DepartmentPage></DepartmentPage>
+
+<style>
+    .hover-card {
+        cursor: pointer;
+        transition: transform .25s, box-shadow .25s;
+        border-radius: 12px;
+    }
+
+    .hover-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+
+</style>
+
+@code {
+    // departments (codes shown in dropdown only)
+    private string[] departments = new[] { "AST", "Aviation", "CADD", "CARP", "ELEC", "HET", "ITEC", "PLUM", "POWE", "SFPF", "WELD", "TRAD" };
+
+    private string[] semesters = new[] { "Fall 2025", "Spring 2025" };
+
+    // workload model
+    public class DepartmentWorkload
+    {
+        public string Faculty { get; set; }
+        public int AST { get; set; }
+        public int Aviation { get; set; }
+        public int CADD { get; set; }
+        public int CARP { get; set; }
+        public int ELEC { get; set; }
+        public int HET { get; set; }
+        public int ITEC { get; set; }
+        public int PLUM { get; set; }
+        public int POWE { get; set; }
+        public int SFPF { get; set; }
+        public int WELD { get; set; }
+        public int TRAD { get; set; }
+        public int TOTAL { get; set; }
+        public string Semester { get; set; } = "Fall 2025";
+    }
+
+    private static readonly Random _rnd = new Random(12345);
+    private List<DepartmentWorkload> workloads = new();
+
+    // chart arrays
+    // labels are "Name — XX hrs" so tooltip shows name+hours
+    private string[] labels = Array.Empty<string>();
+    private double[] data = Array.Empty<double>();
+    private string[] displayNamesForLabels = Array.Empty<string>();
+
+    // controls
+    private int Index = -1;
+
+    // selection defaults
+    private string _selectedDepartment = null;
+    private string SelectedDepartment
+    {
+        get => _selectedDepartment;
+        set
+        {
+            if (_selectedDepartment == value) return;
+            _selectedDepartment = value;
+            Index = -1;
+            RebuildChartData();
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string _selectedSemester = "Fall 2025";
+    private string SelectedSemester
+    {
+        get => _selectedSemester;
+        set
+        {
+            if (_selectedSemester == value) return;
+            _selectedSemester = value;
+            Index = -1;
+            RebuildChartData();
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // Filtered rows for table
+    private IEnumerable<DepartmentWorkload> FilteredWorkloads =>
+        string.IsNullOrEmpty(SelectedDepartment) ? Enumerable.Empty<DepartmentWorkload>() :
+        workloads
+            .Where(w => w.Semester == SelectedSemester && GetHoursByDept(w, SelectedDepartment) > 0)
+            .OrderByDescending(w => GetHoursByDept(w, SelectedDepartment));
+
+    // KPIs (use distinct faculty aggregation)
+    private int KpiFacultyCount =>
+        string.IsNullOrEmpty(SelectedDepartment) ? 0 :
+        workloads
+            .Where(w => w.Semester == SelectedSemester && GetHoursByDept(w, SelectedDepartment) > 0)
+            .Select(w => w.Faculty)
+            .Distinct()
+            .Count();
+
+    private int KpiDeptHours =>
+        string.IsNullOrEmpty(SelectedDepartment) ? 0 :
+        workloads.Where(w => w.Semester == SelectedSemester).Sum(w => GetHoursByDept(w, SelectedDepartment));
+
+    private int KpiAvgHours =>
+        KpiFacultyCount == 0 ? 0 :
+        (int)Math.Round(workloads
+            .Where(w => w.Semester == SelectedSemester && GetHoursByDept(w, SelectedDepartment) > 0)
+            .GroupBy(w => w.Faculty)
+            .Select(g => g.Sum(x => GetHoursByDept(x, SelectedDepartment)))
+            .Average());
+
+    private string KpiBusiestName =>
+        string.IsNullOrEmpty(SelectedDepartment) ? "-" :
+        workloads
+            .Where(w => w.Semester == SelectedSemester && GetHoursByDept(w, SelectedDepartment) > 0)
+            .GroupBy(w => w.Faculty)
+            .Select(g => new { Faculty = g.Key, Hours = g.Sum(x => GetHoursByDept(x, SelectedDepartment)) })
+            .OrderByDescending(x => x.Hours)
+            .FirstOrDefault()?.Faculty ?? "-";
+
+    private int KpiBusiestHours =>
+        string.IsNullOrEmpty(SelectedDepartment) ? 0 :
+        workloads
+            .Where(w => w.Semester == SelectedSemester && GetHoursByDept(w, SelectedDepartment) > 0)
+            .GroupBy(w => w.Faculty)
+            .Select(g => g.Sum(x => GetHoursByDept(x, SelectedDepartment)))
+            .OrderByDescending(x => x)
+            .FirstOrDefault();
+
+    protected override void OnInitialized()
+    {
+        SeedSampleData();
+        SelectedDepartment = "ITEC"; // default
+        SelectedSemester = semesters.FirstOrDefault();
+        RebuildChartData();
+    }
+
+    // Seed sample data using the professor names you provided earlier plus full names used previously.
+    // Each professor assigned to 1..3 departments; ensure at least 8 unique professors per department per semester.
+    private void SeedSampleData()
+    {
+        var profNames = new[]
+        {
+            // original set user gave + previously used names
+            "Derek Maki","Rick Robinson","Alice Nguyen","Sam Park","J. Lee","M. Perez","K. Brown",
+            "Andrew Strange","Steve Reynolds","Jodi Parsonage",
+            // extra realistic names to ensure >=8 per dept
+            "Samuel Johnson","Laura Smith","Anita Patel","Derek Maki","Nadia Garcia","Patrick O'Neil",
+            "Bharat Singh","Emily Chen","Hannah Williams","Tanya Martinez","Gabriel Lopez",
+            "Christopher Wright","Olivia Silva","Mariana Perez","Kevin Brown","Samantha Park",
+            "Geoff Hamilton","Bill Baugh","Caleb Robinson","Yuri Skrynnikov","Michelle Banks",
+            "Clint Lawrence","Tara Watkins","Nicole Burnett","Juanita Whalen","Navneet Kumar"
+        };
+
+        workloads.Clear();
+
+        foreach (var sem in semesters)
+        {
+            foreach (var name in profNames)
+            {
+                var deptCount = _rnd.Next(1, 4); // 1..3 depts
+                var chosen = departments.OrderBy(_ => _rnd.Next()).Take(deptCount).ToList();
+
+                var w = new DepartmentWorkload
+                {
+                    Faculty = name,
+                    AST = 0,
+                    Aviation = 0,
+                    CADD = 0,
+                    CARP = 0,
+                    ELEC = 0,
+                    HET = 0,
+                    ITEC = 0,
+                    PLUM = 0,
+                    POWE = 0,
+                    SFPF = 0,
+                    WELD = 0,
+                    TRAD = 0,
+                    Semester = sem
+                };
+
+                foreach (var d in chosen)
+                {
+                    var hours = _rnd.Next(20, 121);
+                    switch (d)
+                    {
+                        case "AST": w.AST = hours; break;
+                        case "Aviation": w.Aviation = hours; break;
+                        case "CADD": w.CADD = hours; break;
+                        case "CARP": w.CARP = hours; break;
+                        case "ELEC": w.ELEC = hours; break;
+                        case "HET": w.HET = hours; break;
+                        case "ITEC": w.ITEC = hours; break;
+                        case "PLUM": w.PLUM = hours; break;
+                        case "POWE": w.POWE = hours; break;
+                        case "SFPF": w.SFPF = hours; break;
+                        case "WELD": w.WELD = hours; break;
+                        case "TRAD": w.TRAD = hours; break;
+                    }
+                }
+
+                // ensure specific professors have ITEC hours if present
+                if ((name == "Derek Maki" || name == "Andrew Strange" || name == "Steve Reynolds" || name == "Jodi Parsonage") && w.ITEC == 0)
+                    w.ITEC = _rnd.Next(40, 121);
+
+                w.TOTAL = w.AST + w.Aviation + w.CADD + w.CARP + w.ELEC + w.HET + w.ITEC + w.PLUM + w.POWE + w.SFPF + w.WELD + w.TRAD;
+                workloads.Add(w);
+            }
+
+            // ensure each department has at least 8 unique professors this semester
+            foreach (var dept in departments)
+            {
+                var current = workloads.Where(w => w.Semester == sem && GetHoursByDept(w, dept) > 0).Select(w => w.Faculty).Distinct().ToList();
+                var attempts = 0;
+                while (current.Count < 8 && attempts < 500)
+                {
+                    attempts++;
+                    var candidate = profNames[_rnd.Next(profNames.Length)];
+                    var row = workloads.First(w => w.Faculty == candidate && w.Semester == sem);
+
+                    var assignedCount = departments.Count(d => GetHoursByDept(row, d) > 0);
+                    if (GetHoursByDept(row, dept) == 0 && assignedCount < 3)
+                    {
+                        var hours = _rnd.Next(30, 121);
+                        switch (dept)
+                        {
+                            case "AST": row.AST = hours; break;
+                            case "Aviation": row.Aviation = hours; break;
+                            case "CADD": row.CADD = hours; break;
+                            case "CARP": row.CARP = hours; break;
+                            case "ELEC": row.ELEC = hours; break;
+                            case "HET": row.HET = hours; break;
+                            case "ITEC": row.ITEC = hours; break;
+                            case "PLUM": row.PLUM = hours; break;
+                            case "POWE": row.POWE = hours; break;
+                            case "SFPF": row.SFPF = hours; break;
+                            case "WELD": row.WELD = hours; break;
+                            case "TRAD": row.TRAD = hours; break;
+                        }
+                        row.TOTAL = row.AST + row.Aviation + row.CADD + row.CARP + row.ELEC + row.HET + row.ITEC + row.PLUM + row.POWE + row.SFPF + row.WELD + row.TRAD;
+                        current = workloads.Where(w => w.Semester == sem && GetHoursByDept(w, dept) > 0).Select(w => w.Faculty).Distinct().ToList();
+                    }
+                }
+            }
+        }
+    }
+
+    private int GetHoursByDept(DepartmentWorkload w, string dept) => dept switch
+    {
+        "AST" => w.AST,
+        "Aviation" => w.Aviation,
+        "CADD" => w.CADD,
+        "CARP" => w.CARP,
+        "ELEC" => w.ELEC,
+        "HET" => w.HET,
+        "ITEC" => w.ITEC,
+        "PLUM" => w.PLUM,
+        "POWE" => w.POWE,
+        "SFPF" => w.SFPF,
+        "WELD" => w.WELD,
+        "TRAD" => w.TRAD,
+        _ => 0
+    };
+
+    // Build the pie: aggregate by faculty and show each professor as one slice.
+    private void RebuildChartData()
+    {
+        if (string.IsNullOrEmpty(SelectedDepartment) || string.IsNullOrEmpty(SelectedSemester))
+        {
+            labels = Array.Empty<string>();
+            data = Array.Empty<double>();
+            displayNamesForLabels = Array.Empty<string>();
+            return;
+        }
+
+        var rows = workloads
+            .Where(w => w.Semester == SelectedSemester && GetHoursByDept(w, SelectedDepartment) > 0)
+            .ToList();
+
+        if (!rows.Any())
+        {
+            labels = Array.Empty<string>();
+            data = Array.Empty<double>();
+            displayNamesForLabels = Array.Empty<string>();
+            return;
+        }
+
+        var byFaculty = rows
+            .GroupBy(r => r.Faculty)
+            .Select(g => new { Faculty = g.Key, Hours = g.Sum(x => GetHoursByDept(x, SelectedDepartment)) })
+            .OrderByDescending(x => x.Hours)
+            .ToList();
+
+        // show all professors (one slice each)
+        var top = byFaculty;
+
+        displayNamesForLabels = top.Select(t => t.Faculty).ToArray();
+        labels = top.Select(t => $"{t.Faculty} — {t.Hours} hrs").ToArray();
+        data = top.Select(t => (double)t.Hours).ToArray();
+    }
+
+    // Randomize visible professors' hours
+    void RandomizeData()
+    {
+        if (labels == null || labels.Length == 0) return;
+        var names = labels.Select(l => l.Split(" — ")[0]).ToArray();
+        foreach (var name in names)
+        {
+            var row = workloads.FirstOrDefault(w => w.Faculty == name && w.Semester == SelectedSemester);
+            if (row == null) continue;
+            var newHours = _rnd.Next(10, 121);
+            switch (SelectedDepartment)
+            {
+                case "AST": row.AST = newHours; break;
+                case "Aviation": row.Aviation = newHours; break;
+                case "CADD": row.CADD = newHours; break;
+                case "CARP": row.CARP = newHours; break;
+                case "ELEC": row.ELEC = newHours; break;
+                case "HET": row.HET = newHours; break;
+                case "ITEC": row.ITEC = newHours; break;
+                case "PLUM": row.PLUM = newHours; break;
+                case "POWE": row.POWE = newHours; break;
+                case "SFPF": row.SFPF = newHours; break;
+                case "WELD": row.WELD = newHours; break;
+                case "TRAD": row.TRAD = newHours; break;
+            }
+            row.TOTAL = row.AST + row.Aviation + row.CADD + row.CARP + row.ELEC + row.HET + row.ITEC + row.PLUM + row.POWE + row.SFPF + row.WELD + row.TRAD;
+        }
+
+        RebuildChartData();
+        StateHasChanged();
+    }
+
+    private async Task ExportCsv()
+    {
+        var rows = workloads.Where(w => w.Semester == SelectedSemester).ToList();
+        if (!rows.Any()) return;
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Faculty,DeptHours,Total,Semester");
+        foreach (var r in rows)
+        {
+            sb.AppendLine($"\"{r.Faculty}\",{GetHoursByDept(r, SelectedDepartment)},{r.TOTAL},{r.Semester}");
+        }
+        var csv = sb.ToString();
+
+        await JS.InvokeVoidAsync("blazorDownloadFile", $"{SelectedDepartment}-workload.csv", Convert.ToBase64String(Encoding.UTF8.GetBytes(csv)), "text/csv");
+    }
+}

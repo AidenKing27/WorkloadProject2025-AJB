@@ -1,0 +1,105 @@
+﻿@inject FacultyService facultyService
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="faculty" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+
+            <MudStack Spacing="2">
+
+                <MudStaticTextField Label="First Name"
+                                    @bind-Value="faculty.FirstName"
+                                    For="@(() => faculty.FirstName)"
+                                    T="string"
+                                    Class="mb-2"
+                                    Required="true"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.Person">
+                </MudStaticTextField>
+
+                <MudStaticTextField Label="Last Name"
+                                    @bind-Value="faculty.LastName"
+                                    For="@(() => faculty.LastName)"
+                                    T="string"
+                                    Class="mb-2"
+                                    Required="true"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.Person">
+                </MudStaticTextField>
+
+                <MudStaticTextField Label="Email"
+                                    @bind-Value="faculty.Email"
+                                    For="@(() => faculty.Email)"
+                                    T="string"
+                                    Class="mb-2"
+                                    Required="true"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.Email">
+                </MudStaticTextField>
+
+                <MudStaticTextField Label="Phone Number"
+                                    @bind-Value="faculty.PhoneNumber"
+                                    For="@(() => faculty.PhoneNumber)"
+                                    T="string"
+                                    Class="mb-2"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.Phone">
+                </MudStaticTextField>
+
+                <MudSelect Label="Workload Category"
+                           @bind-value="faculty.WorkloadCategoryId"
+                           For="@(() => faculty.WorkloadCategoryId)"
+                           T="int?"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Dense="true"
+                           Modal="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.Apps">
+                    <MudSelectItem T="int?" Value="@(null)">Select a Workload Category</MudSelectItem>
+                    @foreach (var wC in WorkloadCategories)
+                    {
+                        <MudSelectItem T="int?" Value="@wC.Id">Category @wC.Id</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <ValidationMessage For="@(() => faculty.WorkloadCategoryId)" />
+
+            </MudStack>
+
+            <MudCardActions Class="mt-4 d-flex justify-center">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                <MudStaticButton Color="Color.Primary" Variant="Variant.Filled" FormAction="FormAction.Submit">Save</MudStaticButton>
+            </MudCardActions>
+
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter]
+    public EventCallback<Department> OnSaved { get; set; }
+
+    [Parameter]
+    public List<WorkloadCategory> WorkloadCategories { get; set; }
+
+    private Faculty faculty { get; set; } = new Faculty();
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async void Save()
+    {
+        await facultyService.AddAsync(faculty);
+        await OnSaved.InvokeAsync();
+        faculty = new Faculty();
+        MudDialog.Close(DialogResult.Ok(true));
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,80 @@
+﻿@page "/programdashboardpage"
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6">
+
+    <MudText Typo="Typo.h4" GutterBottom="true">Programs Dashboard</MudText>
+    <MudText Typo="Typo.subtitle1" Class="mb-6">Enrollment Overview by Program and Semester</MudText>
+
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="p-4">
+                <MudText Typo="Typo.h6" Class="mb-2">Program Enrollment by Semester</MudText>
+                <MudChart ChartType="ChartType.Bar"
+                          ChartSeries="@_enrollmentSeries"
+                          XAxisLabels="@_semesters"
+                          Height="350px"
+                          AxisChartOptions="_axisChartOptions">
+                </MudChart>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="p-4 text-center">
+                <MudText Typo="Typo.h6" Class="mb-2">Total Enrollment by Program</MudText>
+                <MudChart ChartType="ChartType.Donut"
+                          InputData="@_totals"
+                          InputLabels="@_labels"
+                          Width="280px"
+                          Height="280px">
+                    <CustomGraphics>
+                        <text x="50%" y="35%" dominant-baseline="middle" text-anchor="middle"
+                              fill="black" font-family="Helvetica" font-size="20">Total</text>
+                        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+                              fill="black" font-family="Helvetica" font-size="40">@_totals.Sum()</text>
+                    </CustomGraphics>
+                </MudChart>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="p-4">
+                <MudText Typo="Typo.h6" Class="mb-2">Semester Enrollment Composition</MudText>
+                <MudChart ChartType="ChartType.StackedBar"
+                          ChartSeries="@_stackedSeries"
+                          XAxisLabels="@_semesters"
+                          Height="350px"
+                          AxisChartOptions="_stackedOptions">
+                </MudChart>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    // Common semester labels
+    private string[] _semesters = { "Fall", "Winter", "Spring", "Summer" };
+
+    // === BAR CHART: Enrollment Trends ===
+    private AxisChartOptions _axisChartOptions = new();
+    private List<ChartSeries> _enrollmentSeries = new()
+    {
+        new ChartSeries() { Name = "STEM", Data = new double[] { 120, 130, 150, 140 } },
+        new ChartSeries() { Name = "Arts", Data = new double[] { 80, 95, 100, 90 } },
+        new ChartSeries() { Name = "Sports", Data = new double[] { 60, 70, 85, 80 } },
+        new ChartSeries() { Name = "Community Outreach", Data = new double[] { 40, 50, 45, 55 } }
+    };
+
+    // === DONUT CHART: Total Enrollments ===
+    private double[] _totals = { 540, 365, 295, 190 };
+    private string[] _labels = { "STEM", "Arts", "Sports", "Community Outreach" };
+
+    // === STACKED BAR CHART: Semester Composition ===
+    private AxisChartOptions _stackedOptions = new() { StackedBarWidthRatio = 0.6 };
+    private List<ChartSeries> _stackedSeries = new()
+    {
+        new ChartSeries() { Name = "STEM", Data = new double[] { 120, 130, 150, 140 } },
+        new ChartSeries() { Name = "Arts", Data = new double[] { 80, 95, 100, 90 } },
+        new ChartSeries() { Name = "Sports", Data = new double[] { 60, 70, 85, 80 } },
+        new ChartSeries() { Name = "Community Outreach", Data = new double[] { 40, 50, 45, 55 } }
+    };
+}

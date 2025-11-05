@@ -1,0 +1,207 @@
+﻿@inject WorkloadService workloadService
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="workload" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+
+            <MudStack Spacing="2">
+
+                <MudSelect Label="Faculty Member"
+                           @bind-Value="workload.FacultyEmail"
+                           For="@(() => workload.FacultyEmail)"
+                           T="string"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Dense="true"
+                           Modal="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.Person">
+                    @foreach (var f in Faculty)
+                    {
+                        <MudSelectItem T="string" Value="@f.Email">@f.FirstName @f.LastName</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect Label="School"
+                           @bind-Value="tmpSchool"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Dense="true"
+                           Modal="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.School">
+                    @foreach (var s in Schools)
+                    {
+                        <MudSelectItem Value="s">@s.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect Label="Department"
+                           @bind-Value="tmpDepartment"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Dense="true"
+                           Modal="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.Business">
+                    @foreach (var d in GetFilteredDepartments())
+                    {
+                        <MudSelectItem Value="d">@d.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect Label="Program"
+                           @bind-Value="tmpProgram"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Dense="true"
+                           Modal="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.Assessment">
+                    @foreach (var p in GetFilteredPrograms())
+                    {
+                        <MudSelectItem Value="p">@p.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect Label="Course"
+                                   @bind-Value="workload.CourseId"
+                                   For="@(() => workload.CourseId)"
+                                   T="int?"
+                                   Class="mb-2"
+                                   Required="true"
+                                   Immediate="true"
+                                   Dense="true"
+                                   Modal="true"
+                                   Adornment="Adornment.Start"
+                                   AdornmentIcon="@Icons.Material.Filled.Book">
+                            @foreach (var c in GetFilteredCourses())
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudSelect Label="Course Type"
+                                   @bind-Value="workload.CourseType"
+                                   For="@(() => workload.CourseType)"
+                                   Class="mb-2"
+                                   Required="true"
+                                   Immediate="true"
+                                   Dense="true"
+                                   Modal="true"
+                                   Adornment="Adornment.Start"
+                                   AdornmentIcon="@Icons.Material.Filled.Book">
+                            @foreach (var cT in Enum.GetValues<CourseType>())
+                            {
+                                <MudSelectItem T="CourseType" Value="@cT">@cT</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField Label="Section"
+                                      @bind-Value="workload.Section"
+                                      For="@(() => workload.Section)"
+                                      Class="mb-2"
+                                      Required="true"
+                                      MaxLength="1"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Edit">
+                        </MudTextField>
+                    </MudItem>
+                </MudGrid>
+
+            </MudStack>
+
+            <MudCardActions Class="mt-4 d-flex justify-center">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                <MudStaticButton Color="Color.Primary" Variant="Variant.Filled" FormAction="FormAction.Submit">Save</MudStaticButton>
+            </MudCardActions>
+
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter]
+    public EventCallback<Department> OnSaved { get; set; }
+
+    [Parameter]
+    public List<Faculty> Faculty { get; set; }
+    [Parameter]
+    public List<School> Schools { get; set; }
+    [Parameter]
+    public List<Department> Departments { get; set; }
+    [Parameter]
+    public List<ProgramOfStudy> Programs { get; set; }
+    [Parameter]
+    public List<Course> Courses { get; set; }
+
+    private Workload workload { get; set; } = new Workload();
+    private School tmpSchool;
+    private Department tmpDepartment;
+    private ProgramOfStudy tmpProgram;
+
+    private List<Department> GetFilteredDepartments()
+    {
+        if (tmpSchool == null)
+            return new List<Department>();
+
+        return Departments.Where(d => d.School == tmpSchool).ToList();
+    }
+
+    private List<ProgramOfStudy> GetFilteredPrograms()
+    {
+        if (tmpDepartment == null)
+            return new List<ProgramOfStudy>();
+
+        return Programs.Where(p => p.Department == tmpDepartment).ToList();
+    }
+
+    private List<Course> GetFilteredCourses()
+    {
+        if (tmpProgram == null)
+            return new List<Course>();
+
+        return Courses.Where(c => c.Program == tmpProgram).ToList();
+    }
+
+    private void Cancel()
+    {
+        tmpSchool = null;
+        tmpDepartment = null;
+        tmpProgram = null;
+        MudDialog.Cancel();
+    }
+
+    private async Task Save()
+    {
+        if (workload.FacultyEmail != null)
+        {
+            workload.FacultyMember = Faculty.FirstOrDefault(x => x.Email == workload.FacultyEmail);
+        }
+
+        if (workload.CourseId != null)
+        {
+            workload.Course = Courses.FirstOrDefault(x => x.Id == workload.CourseId);
+            workload.Hours = Courses.FirstOrDefault(c => c.Id == workload.CourseId)?.Hours;
+        }
+
+        await workloadService.AddAsync(workload);
+        await OnSaved.InvokeAsync();
+        workload = new Workload();
+        MudDialog.Close(DialogResult.Ok(true));
+        StateHasChanged();
+    }
+}

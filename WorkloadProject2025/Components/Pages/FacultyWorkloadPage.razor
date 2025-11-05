@@ -1,0 +1,139 @@
+﻿@page "/facultyworkloadpage"
+
+@inject FacultyService facultyService
+@inject SchoolService schoolService
+@inject DepartmentService departmentService
+@inject ProgramOfStudyService programService
+@inject CourseService courseService
+@inject WorkloadService workloadService
+@inject IDialogService dialogService
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <MudGrid Spacing="2">
+            <MudItem xs="6">
+                <MudCardContent>
+                    @if (selectedFaculty != null)
+                    {
+                        <MudText Typo="Typo.h6" Class="font-semibold">Current Workloads for @selectedFaculty.FirstName @selectedFaculty.LastName</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h6" Class="font-semibold">Current Workloads</MudText>
+                    }
+                </MudCardContent>
+            </MudItem>
+            <MudItem xs="6">
+                <MudCardContent Class="d-flex justify-end">
+                    @if (selectedFaculty != null)
+                    {
+                        <MudText Typo="Typo.h6" Class="font-semibold">Range: @selectedFaculty.WorkloadCategory.MinimumHours - @selectedFaculty.WorkloadCategory.MaximumHours</MudText>
+                    }
+                </MudCardContent>
+            </MudItem>
+        </MudGrid>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudSelect Label="Select Faculty Member"
+                   T="Faculty"
+                   Value="selectedFaculty"
+                   ValueChanged="OnSelectionChanged"
+                   Immediate="true"
+                   Dense="true"
+                   Modal="true"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Filled.Person">
+            <MudSelectItem T="Faculty" Value="@(null)">Select a Faculty Member</MudSelectItem>
+            @foreach (var f in faculty)
+            {
+                <MudSelectItem Value="@f">@f.FirstName @f.LastName</MudSelectItem>
+            }
+        </MudSelect>
+    </MudCardContent>
+
+    <MudCardContent>
+        <MudStack Spacing="2">
+            <MudDataGrid Items="tmpWorkloads">
+                <Columns>
+                    <TemplateColumn Title="Course">
+                        <CellTemplate>
+                            <MudText>@context.Item.Course.Name</MudText>
+                        </CellTemplate>
+                    </TemplateColumn>
+
+                    <PropertyColumn Property="x => x.Section"
+                                    Title="Section" />
+
+                    <PropertyColumn Property="x => x.CourseType.ToString()"
+                                    Title="Course Type" />
+
+                    
+
+                    <PropertyColumn Property="x => x.Course.Program.Name"
+                                    Title="Program" />
+                    <PropertyColumn Property="x => x.Course.Program.Department.Name"
+                                    Title="Department" />
+                    <PropertyColumn Property="x => x.Course.Program.Department.School.Name"
+                                    Title="School" />
+
+                    <PropertyColumn Property="x => x.Hours"
+                                    Title="Hours" />
+
+                </Columns>
+            </MudDataGrid>
+        </MudStack>
+
+        <MudCardContent Class="d-flex justify-end pb-0">
+            <MudText Typo="Typo.h6" Class="font-semibold">Total: @totalHours Hours </MudText>
+        </MudCardContent>
+
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    private Faculty selectedFaculty;
+
+    private List<Workload> workloads = new List<Workload>();
+    private List<Workload> tmpWorkloads = new List<Workload>();
+    private List<School> schools = new List<School>();
+    private List<Department> departments = new List<Department>();
+    private List<ProgramOfStudy> programs = new List<ProgramOfStudy>();
+    private List<Course> courses = new List<Course>();
+    private List<Faculty> faculty = new List<Faculty>();
+
+    int? totalHours;
+
+    protected override async Task OnInitializedAsync()
+    {
+        workloads = await workloadService.GetAllAsync();
+        faculty = await facultyService.GetAllAsync();
+        schools = await schoolService.GetAllAsync();
+        departments = await departmentService.GetAllAsync();
+        programs = await programService.GetAllAsync();
+        courses = await courseService.GetAllAsync();
+    }
+
+    private void OnSelectionChanged(Faculty newSelection)
+    {
+        selectedFaculty = newSelection;
+        totalHours = 0;
+
+        if (selectedFaculty != null)
+        {
+            tmpWorkloads = workloads.Where(x => x.FacultyMember == selectedFaculty).ToList();
+        }
+        else
+        {
+            tmpWorkloads = new List<Workload>();
+        }
+
+        foreach (var w in tmpWorkloads)
+        {
+            totalHours += w.Hours;
+        }
+
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,105 @@
+﻿@inject CourseService courseService
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="course" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+
+            <MudStack Spacing="2">
+
+                <MudStaticTextField Label="Course Name"
+                                    @bind-Value="course.Name"
+                                    For="@(() => course.Name)"
+                                    T="string"
+                                    Class="mb-2"
+                                    Required="true"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.Book">
+                </MudStaticTextField>
+
+                <MudNumericField Label="Course Hours"
+                                 @bind-Value="course.Hours"
+                                 For="@(() => course.Hours)"
+                                 T="int?"
+                                 Class="mb-2"
+                                 Required="true"
+                                 Adornment="Adornment.Start"
+                                 AdornmentIcon="@Icons.Material.Filled.AccessTime">
+                </MudNumericField>
+
+                <MudSelect Label="Program"
+                           @bind-value="course.ProgramId"
+                           For="@(() => course.ProgramId)"
+                           T="int?"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Dense="true"
+                           Modal="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.Article">
+                    <MudSelectItem T="int?" Value="@(null)">Select a Program</MudSelectItem>
+                    @foreach (var p in Programs)
+                    {
+                        <MudSelectItem T="int?" Value="@p.Id">@p.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect Label="Term"
+                           @bind-value="course.TermId"
+                           For="@(() => course.TermId)"
+                           T="int?"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.List">
+                    <MudSelectItem T="int?" Value="@(null)">Select a Term</MudSelectItem>
+                    @foreach (var t in Terms)
+                    {
+                        <MudSelectItem T="int?" Value="@t.Id">@t.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <ValidationMessage For="@(() => course.ProgramId)" />
+                <ValidationMessage For="@(() => course.TermId)" />
+
+            </MudStack>
+
+            <MudCardActions Class="mt-4 d-flex justify-center">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                <MudStaticButton Color="Color.Primary" Variant="Variant.Filled" FormAction="FormAction.Submit">Save</MudStaticButton>
+            </MudCardActions>
+
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter]
+    public EventCallback<Department> OnSaved { get; set; }
+
+    [Parameter]
+    public List<ProgramOfStudy> Programs { get; set; }
+    [Parameter]
+    public List<Term> Terms { get; set; }
+
+    private Course course { get; set; } = new Course();
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async void Save()
+    {
+        await courseService.AddAsync(course);
+        await OnSaved.InvokeAsync();
+        course = new Course();
+        MudDialog.Close(DialogResult.Ok(true));
+        StateHasChanged();
+    }
+}

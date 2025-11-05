@@ -1,0 +1,326 @@
+﻿@page "/semesterdashboard"
+
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<PageTitle>Semester Dashboard</PageTitle>
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h4" Class="font-semibold">Semester Dashboard</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudGrid AlignItems="AlignItems.Center">
+                <MudItem Xs="12" Sm="4" Md="3">
+                    <MudSelect T="string" Label="Term" @bind-Value="SelectedTerm" Dense="true">
+                        @foreach (var t in TermList)
+                        {
+                            <MudSelectItem Value="@t">@t</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem Xs="12" Sm="4" Md="3">
+                    <MudSelect T="string" Label="Department (code)" @bind-Value="SelectedDepartment" Dense="true">
+                        @foreach (var d in Departments)
+                        {
+                            <MudSelectItem Value="@d">@d</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem Xs="12" Sm="4" Md="3">
+                    @if (SelectedDepartment == "ITEC")
+                    {
+                        <MudSelect T="string" Label="ITEC Major" @bind-Value="SelectedMajor" Dense="true">
+                            @foreach (var m in ItecMajors)
+                            {
+                                <MudSelectItem Value="@m">@m</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="py-2 text-secondary">Major: N/A</MudText>
+                    }
+                </MudItem>
+
+                <MudItem Xs="12" Sm="12" Md="3" Class="d-flex justify-end align-items-center">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="ResetData">Reset</MudButton>
+                    <MudButton Variant="Variant.Filled" Size="Size.Small" Class="ms-2" OnClick="ExportProfessorCsv" Disabled="@(ProfessorList.Count == 0)">Export Professors CSV</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudGrid>
+            <!-- Left: Department courses per 4-month term -->
+            <MudItem Xs="12" Md="6">
+                <MudPaper Class="pa-4 mb-2" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-2">Department — Courses by Month (@SelectedDepartment, @SelectedTerm)</MudText>
+
+                    <MudChart ChartType="ChartType.Bar"
+                              ChartSeries="@DeptBarSeries"
+                              XAxisLabels="@XAxisLabels"
+                              Height="320px"
+                              Width="100%" />
+
+                    <MudText Typo="Typo.caption" Class="mt-2 text-secondary">
+                        X axis = the four months of the term. Y axis = number of courses running that month.
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Right: Professor monthly allocation (line chart) -->
+            <MudItem Xs="12" Md="6">
+                <MudPaper Class="pa-4 mb-2" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-2">Professor Monthly Allocation — @ProfessorChartTitle</MudText>
+
+                    @if (!ProfessorLineSeries.Any())
+                    {
+                        <MudText Typo="Typo.body2">No professor allocation data available for this selection.</MudText>
+                    }
+                    else
+                    {
+                        <MudChart ChartType="ChartType.Line"
+                                  ChartSeries="@ProfessorLineSeries"
+                                  XAxisLabels="@XAxisLabels"
+                                  Height="320px"
+                                  Width="100%" />
+                    }
+
+                    <MudTable T="ProfessorAllocation" Items="ProfessorList" Dense="true" Class="mt-3">
+                        <HeaderContent>
+                            <MudTh>#</MudTh>
+                            <MudTh>Professor</MudTh>
+                            <MudTh>Semester Hours</MudTh>
+                        </HeaderContent>
+
+                        <RowTemplate Context="p">
+                            <MudTr>
+                                <MudTd>@(ProfessorList.IndexOf(p) + 1)</MudTd>
+                                <MudTd>@p.Name</MudTd>
+                                <MudTd>@p.MonthlyHours.Sum()</MudTd>
+                            </MudTr>
+                        </RowTemplate>
+
+                        <NoRecordsContent>
+                            <MudText Typo="Typo.body2">No professors for this selection.</MudText>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    // configuration
+    private string[] Departments = new[] { "AST", "Aviation", "CADD", "CARP", "ELEC", "HET", "ITEC", "PLUM", "POWE", "SFPF", "WELD", "TRAD" };
+    private List<string> TermList = new() { "Fall-2025", "Winter-2026", "Spring-2026", "Summer-2026" };
+
+    // ITEC majors
+    private string[] ItecMajors = new[] { "Software & Internet Development", "Network Administration" };
+
+    // selections
+    private string SelectedTerm;
+    private string SelectedDepartment;
+    private string SelectedMajor;
+
+    // data stores
+    private List<DeptCourse> _courses = new();
+    private List<ProfessorAllocation> _professors = new();
+
+    // charts
+    private List<ChartSeries> DeptBarSeries = new();
+    private string[] XAxisLabels => GetXAxisLabels();
+
+    // professor line series (one line per professor showing monthly hours)
+    private List<ChartSeries> ProfessorLineSeries = new();
+    private string[] ProfessorLabels = Array.Empty<string>();
+    private double[] ProfessorData = Array.Empty<double>();
+
+    // table items
+    private List<ProfessorAllocation> ProfessorList = new();
+
+    private string ProfessorChartTitle => SelectedDepartment == "ITEC"
+        ? $"{SelectedDepartment} — {SelectedMajor ?? "All Majors"} ({SelectedTerm})"
+        : $"{SelectedDepartment} ({SelectedTerm})";
+
+    protected override void OnInitialized()
+    {
+        SelectedTerm = TermList.First();
+        SelectedDepartment = "ITEC";
+        SelectedMajor = ItecMajors.First();
+
+        SeedMinimalData();
+        RebuildAll();
+    }
+
+    private void ResetData()
+    {
+        SeedMinimalData();
+        RebuildAll();
+        Snackbar.Add("Reset demo data", Severity.Info);
+    }
+
+    private void RebuildAll()
+    {
+        BuildDeptBarSeries();
+        BuildProfessorData(); // builds ProfessorList AND ProfessorLineSeries
+        StateHasChanged();
+    }
+
+    private void BuildDeptBarSeries()
+    {
+        if (string.IsNullOrEmpty(SelectedDepartment) || string.IsNullOrEmpty(SelectedTerm))
+        {
+            DeptBarSeries = new List<ChartSeries>();
+            return;
+        }
+
+        var counts = new double[4];
+        for (int m = 1; m <= 4; m++)
+            counts[m - 1] = _courses.Count(c => c.Department == SelectedDepartment && c.Term == SelectedTerm && c.MonthIndex == m);
+
+        DeptBarSeries = new List<ChartSeries> { new ChartSeries { Name = SelectedDepartment, Data = counts } };
+    }
+
+    private void BuildProfessorData()
+    {
+        IEnumerable<ProfessorAllocation> list;
+        if (SelectedDepartment == "ITEC")
+            list = _professors.Where(p => p.Department == "ITEC" && p.Term == SelectedTerm && (SelectedMajor == null || p.Major == SelectedMajor));
+        else
+            list = _professors.Where(p => p.Department == SelectedDepartment && p.Term == SelectedTerm);
+
+        // sort descending by total semester hours
+        ProfessorList = list.OrderByDescending(p => p.MonthlyHours.Sum()).ToList();
+
+        // Build line series: one series per professor (limit to top 8 to keep chart readable)
+        ProfessorLineSeries = ProfessorList
+            .Take(8)
+            .Select(p => new ChartSeries
+            {
+                Name = p.Name,
+                Data = p.MonthlyHours.Select(h => (double)h).ToArray()
+            })
+            .ToList();
+
+        // also build labels/data arrays for pie or other uses (kept for compatibility)
+        ProfessorLabels = ProfessorList.Select(p => $"{p.Name} — {p.MonthlyHours.Sum()} hrs").ToArray();
+        ProfessorData = ProfessorList.Select(p => (double)p.MonthlyHours.Sum()).ToArray();
+    }
+
+    private async Task ExportProfessorCsv()
+    {
+        if (!ProfessorList.Any())
+        {
+            Snackbar.Add("No professor data to export.", Severity.Warning);
+            return;
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Department,Term,Major,Professor,Month1,Month2,Month3,Month4,TotalHours");
+        foreach (var p in ProfessorList)
+        {
+            var months = p.MonthlyHours;
+            sb.AppendLine($"\"{p.Department}\",\"{p.Term}\",\"{p.Major ?? ""}\",\"{p.Name}\",{months[0]},{months[1]},{months[2]},{months[3]},{months.Sum()}");
+        }
+
+        await JS.InvokeVoidAsync("blazorDownloadFile", $"{SelectedDepartment}-{SelectedTerm}-professors.csv", Convert.ToBase64String(Encoding.UTF8.GetBytes(sb.ToString())), "text/csv");
+        Snackbar.Add("Exported professor CSV", Severity.Success);
+    }
+
+    // X axis label generation (4 months)
+    private string[] GetXAxisLabels()
+    {
+        var start = SelectedTerm switch
+        {
+            "Fall-2025" => new DateTime(2025, 9, 1),
+            "Winter-2026" => new DateTime(2026, 1, 1),
+            "Spring-2026" => new DateTime(2026, 5, 1),
+            "Summer-2026" => new DateTime(2026, 7, 1),
+            _ => DateTime.Today
+        };
+        return Enumerable.Range(0, 4).Select(i => start.AddMonths(i).ToString("MMM yyyy")).ToArray();
+    }
+
+    // --- Minimal seeding and professor data (Steve changed to "Steve L") ---
+    private void SeedMinimalData()
+    {
+        _courses.Clear();
+        _professors.Clear();
+
+        // ITEC course codes (as you provided)
+        var itecCourses = new[]
+        {
+            "ITEC 100","ITEC 110","ITEC 120","ITEC 130","ITEC 140","ITEC 145","ITEC 150","ITEC 155",
+            "ITEC 170","ITEC 190","ITEC 205","ITEC 230","ITEC 240","ITEC 260","ITEC 265","ITEC 270",
+            "ITEC 275","ITEC 281"
+        };
+
+        foreach (var term in TermList)
+        {
+            var idx = 0;
+            foreach (var code in itecCourses)
+            {
+                _courses.Add(new DeptCourse { Department = "ITEC", Term = term, CourseCode = code, MonthIndex = (idx % 4) + 1 });
+                idx++;
+            }
+
+            var acctCodes = new[] { "ACCT 111", "ACCT 113", "ACCT 211", "ACCT 215", "ACCT 213" };
+            idx = 0;
+            foreach (var code in acctCodes)
+            {
+                _courses.Add(new DeptCourse { Department = "ACCT", Term = term, CourseCode = code, MonthIndex = (idx % 4) + 1 });
+                idx++;
+            }
+
+            _courses.Add(new DeptCourse { Department = "ABST", Term = term, CourseCode = "ABST 0030", MonthIndex = 1 });
+        }
+
+        // Professors: create monthly allocations (4 months) for seeded professors.
+        foreach (var term in TermList)
+        {
+            // ITEC Software major
+            _professors.Add(new ProfessorAllocation { Department = "ITEC", Term = term, Major = ItecMajors[0], Name = "Derek Maki", MonthlyHours = new[] { 80, 80, 80, 80 } });
+            _professors.Add(new ProfessorAllocation { Department = "ITEC", Term = term, Major = ItecMajors[0], Name = "Andrew Strange", MonthlyHours = new[] { 70, 70, 70, 70 } });
+            _professors.Add(new ProfessorAllocation { Department = "ITEC", Term = term, Major = ItecMajors[0], Name = "Steve L", MonthlyHours = new[] { 60, 60, 60, 60 } });
+
+            // ITEC Network major
+            _professors.Add(new ProfessorAllocation { Department = "ITEC", Term = term, Major = ItecMajors[1], Name = "Jodi Parsonage", MonthlyHours = new[] { 75, 75, 75, 75 } });
+            _professors.Add(new ProfessorAllocation { Department = "ITEC", Term = term, Major = ItecMajors[1], Name = "Rick Robinson", MonthlyHours = new[] { 65, 65, 65, 65 } });
+
+            // ACCT
+            _professors.Add(new ProfessorAllocation { Department = "ACCT", Term = term, Major = null, Name = "Laura Smith", MonthlyHours = new[] { 55, 55, 55, 55 } });
+            _professors.Add(new ProfessorAllocation { Department = "ACCT", Term = term, Major = null, Name = "Anita Patel", MonthlyHours = new[] { 50, 50, 50, 50 } });
+
+            // ABST
+            _professors.Add(new ProfessorAllocation { Department = "ABST", Term = term, Major = null, Name = "Samuel Johnson", MonthlyHours = new[] { 30, 30, 30, 30 } });
+        }
+    }
+
+    // Models
+    private class DeptCourse
+    {
+        public string Department { get; set; } = "";
+        public string Term { get; set; } = "";
+        public string CourseCode { get; set; } = "";
+        public int MonthIndex { get; set; } = 1; // 1..4
+    }
+
+    private class ProfessorAllocation
+    {
+        public string Department { get; set; } = "";
+        public string Term { get; set; } = "";
+        public string Major { get; set; } = null;
+        public string Name { get; set; } = "";
+        public int[] MonthlyHours { get; set; } = new int[4];
+
+        public int Hours => MonthlyHours?.Sum() ?? 0;
+    }
+}

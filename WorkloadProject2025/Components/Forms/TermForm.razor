@@ -1,0 +1,76 @@
+﻿@inject TermService termService
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="term" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+
+            <MudStack Spacing="2">
+
+                <MudStaticTextField Label="Term Name"
+                                    @bind-Value="term.Name"
+                                    For="@(() => term.Name)"
+                                    T="string"
+                                    Class="mb-2"
+                                    Required="true"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.List">
+                </MudStaticTextField>
+
+                <MudDatePicker Label="Start Date"
+                               @bind-Date="term.StartDate"
+                               For="@(() => term.StartDate)"
+                               Class="mb-2"
+                               Required="true"
+                               DateFormat="MM/dd/yyyy"
+                               PickerVariant="PickerVariant.Dialog"
+                               Variant="Variant.Filled"
+                               Adornment="Adornment.End"
+                               AdornmentIcon="@Icons.Material.Filled.CalendarToday">
+                </MudDatePicker>
+
+                <MudDatePicker Label="End Date"
+                               @bind-Date="term.EndDate"
+                               For="@(() => term.EndDate)"
+                               Class="mb-2"
+                               DateFormat="MM/dd/yyyy"
+                               PickerVariant="PickerVariant.Dialog"
+                               Variant="Variant.Filled"
+                               Adornment="Adornment.End"
+                               AdornmentIcon="@Icons.Material.Filled.CalendarToday">
+                </MudDatePicker>
+
+            </MudStack>
+
+            <MudCardActions Class="mt-4 d-flex justify-center">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                <MudStaticButton Color="Color.Primary" Variant="Variant.Filled" FormAction="FormAction.Submit">Save</MudStaticButton>
+            </MudCardActions>
+
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter]
+    public EventCallback<Department> OnSaved { get; set; }
+
+    private Term term { get; set; } = new Term();
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Save()
+    {
+        await termService.AddAsync(term);
+        await OnSaved.InvokeAsync();
+        term = new Term();
+        MudDialog.Close(DialogResult.Ok(true));
+        StateHasChanged();
+    }
+}

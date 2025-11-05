@@ -1,0 +1,55 @@
+﻿@inject SchoolService schoolService
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="school" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+
+            <MudStack Spacing="2">
+
+                <MudStaticTextField Label="School Name"
+                                    @bind-Value="school.Name"
+                                    For="@(() => school.Name)"
+                                    T="string"
+                                    Class="mb-2"
+                                    Required="true"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.School">
+                </MudStaticTextField>
+
+                @* <ValidationMessage For="@(() => department.SchoolId)" /> *@
+
+            </MudStack>
+
+            <MudCardActions Class="mt-4 d-flex justify-center">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                <MudStaticButton Color="Color.Primary" Variant="Variant.Filled" FormAction="FormAction.Submit">Save</MudStaticButton>
+            </MudCardActions>
+
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter]
+    public EventCallback<Department> OnSaved { get; set; }
+
+    private School school { get; set; } = new School();
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async void Save()
+    {
+        await schoolService.AddAsync(school);
+        await OnSaved.InvokeAsync();
+        school = new School();
+        MudDialog.Close(DialogResult.Ok(true));
+        StateHasChanged();
+    }
+}

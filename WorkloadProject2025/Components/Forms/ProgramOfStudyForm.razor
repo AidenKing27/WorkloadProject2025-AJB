@@ -1,0 +1,76 @@
+﻿@inject ProgramOfStudyService programService
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="program" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+
+            <MudStack Spacing="2">
+
+                <MudStaticTextField Label="Program Name"
+                                    @bind-Value="program.Name"
+                                    For="@(() => program.Name)"
+                                    T="string"
+                                    Class="mb-2"
+                                    Required="true"
+                                    Adornment="Adornment.Start"
+                                    AdornmentIcon="@Icons.Material.Filled.Article">
+                </MudStaticTextField>
+
+                <MudSelect Label="Department"
+                           @bind-value="program.DepartmentId"
+                           For="@(() => program.DepartmentId)"
+                           T="int?"
+                           Class="mb-2"
+                           Required="true"
+                           Immediate="true"
+                           Dense="true"
+                           Modal="true"
+                           Adornment="Adornment.Start"
+                           AdornmentIcon="@Icons.Material.Filled.Business">
+                    <MudSelectItem T="int?" Value="@(null)">Select a Department</MudSelectItem>
+                    @foreach (var d in Departments)
+                    {
+                        <MudSelectItem T="int?" Value="@d.Id">@d.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <ValidationMessage For="@(() => program.DepartmentId)" />
+
+            </MudStack>
+
+            <MudCardActions Class="mt-4 d-flex justify-center">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                <MudStaticButton Color="Color.Primary" Variant="Variant.Filled" FormAction="FormAction.Submit">Save</MudStaticButton>
+            </MudCardActions>
+
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter]
+    public EventCallback<Department> OnSaved { get; set; }
+
+    [Parameter]
+    public List<Department> Departments { get; set; }
+
+    private ProgramOfStudy program { get; set; } = new ProgramOfStudy();
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async void Save()
+    {
+        await programService.AddAsync(program);
+        await OnSaved.InvokeAsync();
+        program = new ProgramOfStudy();
+        MudDialog.Close(DialogResult.Ok(true));
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,225 @@
+﻿@page "/workloadpage"
+
+@inject FacultyService facultyService
+@inject SchoolService schoolService
+@inject DepartmentService departmentService
+@inject ProgramOfStudyService programService
+@inject CourseService courseService
+@inject WorkloadService workloadService
+@inject IDialogService dialogService
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            @if (selection != null)
+            {
+                <MudText Typo="Typo.h6" Class="font-semibold">Current Workloads for @selection.Name</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.h6" Class="font-semibold">Current Workloads</MudText>
+            }
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenFormDialog">Add New Workload</MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudSelect Label="Filter by Program"
+                   T="ProgramOfStudy"
+                   Value="selection"
+                   ValueChanged="OnSelectionChanged"
+                   Immediate="true"
+                   Dense="true"
+                   Modal="true"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Filled.Assessment">
+            <MudSelectItem T="ProgramOfStudy" Value="@(null)">Select a Program</MudSelectItem>
+            @foreach (var p in programs)
+            {
+                <MudSelectItem Value="@p">@p.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </MudCardContent>
+
+    <MudCardContent>
+        <MudStack Spacing="2">
+            <MudDataGrid Items="tmpWorkloads"
+                         T="Workload"
+                         Dense="true"
+                         ReadOnly="false"
+                         EditMode="DataGridEditMode.Cell"
+                         EditTrigger="DataGridEditTrigger.OnRowClick"
+                         CommittedItemChanges="@OnCommittedItemChanges">
+                <Columns>
+                    <TemplateColumn Title="Faculty"
+                                    Editable="true">
+                        <CellTemplate>
+                            <MudText>@context.Item.FacultyMember.FirstName @context.Item.FacultyMember.LastName</MudText>
+                        </CellTemplate>
+                        <EditTemplate>
+                            <MudSelect T="Faculty"
+                                       Value="context.Item.FacultyMember"
+                                       ValueChanged="async (Faculty f) => { context.Item.FacultyMember = f; await OnCommittedItemChanges(context.Item); }"
+                                       Dense="true"
+                                       Margin="Margin.Dense">
+                                @foreach (var f in faculty)
+                                {
+                                    <MudSelectItem Value="@f">@f.FirstName @f.LastName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </EditTemplate>
+                    </TemplateColumn>
+
+                    <TemplateColumn Title="Course"
+                                    Editable="true">
+                        <CellTemplate>
+                            <MudText>@context.Item.Course.Name</MudText>
+                        </CellTemplate>
+                        <EditTemplate>
+                            <MudSelect T="Course"
+                                       Value="context.Item.Course"
+                                       ValueChanged="async (Course c) => { context.Item.Course = c; await OnCommittedItemChanges(context.Item); }"
+                                       Dense="true"
+                                       Margin="Margin.Dense">
+                                @foreach (var c in courses)
+                                {
+                                    <MudSelectItem Value="@c">@c.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </EditTemplate>
+                    </TemplateColumn>
+
+                    <PropertyColumn Property="x => x.Section"
+                                    Title="Section"
+                                    Editable="true" 
+                                    CellStyle="width: 100px;" />
+
+                    <PropertyColumn Property="x => x.Hours"
+                                    Title="Hours"
+                                    Editable="true"
+                                    CellStyle="width: 100px;" />
+
+                    <TemplateColumn Editable="false"
+                                    CellClass="d-flex justify-end">
+                        <CellTemplate>
+                            <MudStack Row>
+                                <MudButton Size="@Size.Small" Variant="@Variant.Filled" Color="@Color.Secondary"
+                                           OnClick="() => DeleteRecord(context.Item)">Delete</MudButton>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+
+                </Columns>
+            </MudDataGrid>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private ProgramOfStudy selection;
+
+    private List<Workload> workloads = new List<Workload>();
+    private List<Workload> tmpWorkloads = new List<Workload>();
+    private List<School> schools = new List<School>();
+    private List<Department> departments = new List<Department>();
+    private List<ProgramOfStudy> programs = new List<ProgramOfStudy>();
+    private List<Course> courses = new List<Course>();
+    private List<Faculty> faculty = new List<Faculty>();
+
+    private Workload workload { get; set; } = new Workload();
+
+    protected override async Task OnInitializedAsync()
+    {
+        workloads = await workloadService.GetAllAsync();
+        tmpWorkloads = workloads;
+        faculty = await facultyService.GetAllAsync();
+        schools = await schoolService.GetAllAsync();
+        departments = await departmentService.GetAllAsync();
+        programs = await programService.GetAllAsync();
+        courses = await courseService.GetAllAsync();
+    }
+
+    private async Task OnCommittedItemChanges(Workload item)
+    {
+        try
+        {
+            if (item.FacultyMember != null)
+            {
+                item.FacultyEmail = item.FacultyMember.Email;
+            }
+
+            if (item.Course != null)
+            {
+                item.CourseId = item.Course.Id;
+            }
+
+            await workloadService.UpdateAsync(item);
+
+            await ReloadData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating workload: {ex.Message}");
+        }
+    }
+
+    private void OnSelectionChanged(ProgramOfStudy newSelection)
+    {
+        selection = newSelection;
+
+        if (selection != null)
+        {
+            tmpWorkloads = workloads.Where(x => selection.Courses.Contains(x.Course)).ToList();
+        }
+        else
+        {
+            tmpWorkloads = workloads;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OpenFormDialog()
+    {
+        var parameters = new DialogParameters<WorkloadForm>
+        {
+            { x => x.Faculty, faculty },
+            { x => x.Schools, schools },
+            { x => x.Departments, departments },
+            { x => x.Programs, programs },
+            { x => x.Courses, courses },
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await dialogService.ShowAsync<WorkloadForm>("Add New Workload", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await ReloadData();
+        }
+    }
+
+    private async Task<bool> DeleteRecord(Workload workload)
+    {
+        bool result = await workloadService.DeleteAsync(workload);
+        await ReloadData();
+
+        return result;
+    }
+
+    public async Task ReloadData()
+    {
+        workloads = await workloadService.GetAllAsync();
+        tmpWorkloads = workloads.Where(x => selection == null || selection.Courses.Contains(x.Course)).ToList();
+        StateHasChanged();
+    }
+}

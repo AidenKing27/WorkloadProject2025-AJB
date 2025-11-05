@@ -1,0 +1,85 @@
+﻿@page "/programofstudypage"
+
+@inject DepartmentService departmentService
+@inject ProgramOfStudyService programService
+@inject IDialogService dialogService
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6" Class="font-semibold">Current Programs</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenFormDialog">Add New Program</MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudDataGrid Items="@programs"
+                     Dense="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Program" />
+                <PropertyColumn Property="x => x.Department.Name" Title="Department" />
+                <PropertyColumn Property="x => x.Courses.Count()" Title="# of Courses" />
+                <TemplateColumn CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudStack Row>
+                            <MudButton Size="@Size.Small" Variant="@Variant.Filled" Color="@Color.Secondary"
+                                       OnClick="() => DeleteRecord(context.Item)">Delete</MudButton>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    private List<Department> departments = new List<Department>();
+    private List<ProgramOfStudy> programs = new List<ProgramOfStudy>();
+    int x;
+
+    protected override async Task OnInitializedAsync()
+    {
+        departments = await departmentService.GetAllAsync();
+        programs = await programService.GetAllAsync();
+    }
+
+    private async Task OpenFormDialog()
+    {
+        var parameters = new DialogParameters<ProgramOfStudyForm>
+        {
+            { x => x.Departments, departments }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await dialogService.ShowAsync<ProgramOfStudyForm>("Add New Program", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await ReloadData();
+        }
+    }
+
+    private async Task<bool> DeleteRecord(ProgramOfStudy program)
+    {
+        bool result = await programService.DeleteAsync(program);
+        await ReloadData();
+
+        return result;
+    }
+
+    public async Task ReloadData()
+    {
+        programs = await programService.GetAllAsync();
+        StateHasChanged();
+    }
+}

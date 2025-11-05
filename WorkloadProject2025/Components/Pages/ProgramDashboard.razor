@@ -1,0 +1,298 @@
+﻿@page "/programdashboard"
+
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Program Dashboard</PageTitle>
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h4" Class="font-semibold">Program Dashboard</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <!-- KPI Row -->
+        <MudGrid Class="mb-3">
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.caption">Programs</MudText>
+                    <MudText Typo="Typo.h5">@totalPrograms</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.caption">Total Students</MudText>
+                    <MudText Typo="Typo.h5">@totalStudents</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.caption">Avg Courses / Program</MudText>
+                    <MudText Typo="Typo.h5">@avgCoursesPerProgram.ToString("F1")</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.caption">Avg Faculty Workload (hrs)</MudText>
+                    <MudText Typo="Typo.h5">@avgFacultyWorkload.ToString("F1")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Filters -->
+        <MudPaper Class="pa-4 mb-4" Elevation="0">
+            <MudGrid AlignItems="Center">
+                <MudItem Xs="12" Sm="6" Md="4">
+                    <MudSelect T="string" Label="Program" @bind-Value="SelectedProgram" Dense="true" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("All")">All Programs</MudSelectItem>
+                        @foreach (var p in programNames)
+                        {
+                            <MudSelectItem Value="@p">@p</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem Xs="12" Sm="6" Md="4" Class="d-flex align-center">
+                    <MudTextField @bind-Value="searchTerm" Placeholder="Search program or course..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" OnInput="OnSearchInput" Style="min-width:220px" />
+                </MudItem>
+
+                <MudItem Xs="12" Sm="12" Md="4" Class="d-flex justify-end">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ExportCsv" StartIcon="@Icons.Material.Filled.FileDownload" Disabled="@(programModels == null || !programModels.Any())">Export CSV</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Charts Row -->
+        <MudGrid>
+            <MudItem Xs="12" Md="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Students by Program</MudText>
+                    @if (deptPieSeries.Any())
+                    {
+                        <MudChart ChartType="ChartType.Pie" ChartSeries="@deptPieSeries" XAxisLabels="@deptPieLabels" Width="100%" Height="280px" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">No data</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <MudItem Xs="12" Md="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Courses by Program</MudText>
+                    @if (coursesBarSeries.Any())
+                    {
+                        <MudChart ChartType="ChartType.Bar" ChartSeries="@coursesBarSeries" XAxisLabels="@coursesBarLabels" Width="100%" Height="280px" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">No data</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <MudItem Xs="12" Md="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Faculty Workload Distribution</MudText>
+                    @if (workloadPieSeries.Any())
+                    {
+                        <MudChart ChartType="ChartType.Pie" ChartSeries="@workloadPieSeries" XAxisLabels="@workloadPieLabels" Width="100%" Height="280px" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">No data</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+@*         <!-- Programs table -->
+        <MudPaper Class="pa-4 mt-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-2">Programs</MudText>
+            <MudTable T="ProgramModel" Items="VisiblePrograms" Hover="true" Dense="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh>Program</MudTh>
+                    <MudTh style="width:90px">Students</MudTh>
+                    <MudTh style="width:90px">Courses</MudTh>
+                    <MudTh style="width:120px">Avg Workload (hrs)</MudTh>
+                    <MudTh style="width:120px" Class="text-right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="p">
+                    <MudTd DataLabel="Program">@p.Name</MudTd>
+                    <MudTd DataLabel="Students">@p.Students</MudTd>
+                    <MudTd DataLabel="Courses">@p.CoursesCount</MudTd>
+                    <MudTd DataLabel="Avg Workload">@p.AvgFacultyWorkload.ToString("F1")</MudTd>
+                    <MudTd Class="d-flex justify-end">
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => ShowProgramDetails(p))">Details</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" OnClick="@(() => NavigateToProgram(p))">Open</MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper> *@
+    </MudCardContent>
+</MudCard>
+
+<ProgramOfStudyPage></ProgramOfStudyPage>
+
+@code {
+    // Local sample models (self-contained). Replace with your real models/services where available.
+    public class ProgramModel
+    {
+        public string Name { get; set; } = "";
+        public int Students { get; set; }
+        public int CoursesCount { get; set; }
+        public double AvgFacultyWorkload { get; set; }
+        public List<string> Courses { get; set; } = new();
+    }
+
+    // Page state
+    private List<ProgramModel> programModels = new();
+    private List<string> programNames = new();
+    private List<ProgramModel> VisiblePrograms => string.IsNullOrWhiteSpace(searchTerm)
+        ? (SelectedProgram == "All" ? programModels : programModels.Where(p => p.Name == SelectedProgram).ToList())
+        : (SelectedProgram == "All"
+            ? programModels.Where(p => p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) || p.Courses.Any(c => c.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))).ToList()
+            : programModels.Where(p => p.Name == SelectedProgram && (p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) || p.Courses.Any(c => c.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))).ToList());
+
+    private string SelectedProgram { get; set; } = "All";
+    private string searchTerm = string.Empty;
+
+    // KPIs
+    private int totalPrograms = 0;
+    private int totalStudents = 0;
+    private double avgCoursesPerProgram = 0;
+    private double avgFacultyWorkload = 0;
+
+    // Charts
+    private List<ChartSeries> deptPieSeries = new();
+    private string[] deptPieLabels = Array.Empty<string>();
+
+    private List<ChartSeries> coursesBarSeries = new();
+    private string[] coursesBarLabels = Array.Empty<string>();
+
+    private List<ChartSeries> workloadPieSeries = new();
+    private string[] workloadPieLabels = Array.Empty<string>();
+
+    protected override Task OnInitializedAsync()
+    {
+        // seed sample data so the dashboard renders and compiles without services
+        SeedSampleData();
+        Recalculate();
+        return Task.CompletedTask;
+    }
+
+    private void SeedSampleData()
+    {
+        programModels = new List<ProgramModel>
+        {
+            new ProgramModel { Name = "Computer Science", Students = 420, CoursesCount = 34, AvgFacultyWorkload = 12.5, Courses = new List<string>{"CS101","CS102","CS201"} },
+            new ProgramModel { Name = "Information Technology", Students = 280, CoursesCount = 22, AvgFacultyWorkload = 11.3, Courses = new List<string>{"IT100","IT110","IT210"} },
+            new ProgramModel { Name = "Accounting", Students = 190, CoursesCount = 18, AvgFacultyWorkload = 9.8, Courses = new List<string>{"ACCT101","ACCT201"} },
+            new ProgramModel { Name = "Business", Students = 330, CoursesCount = 24, AvgFacultyWorkload = 10.7, Courses = new List<string>{"BUS101","BUS210","BUS305"} }
+        };
+
+        programNames = programModels.Select(p => p.Name).ToList();
+    }
+
+    private void Recalculate()
+    {
+        totalPrograms = programModels.Count;
+        totalStudents = programModels.Sum(p => p.Students);
+        avgCoursesPerProgram = programModels.Any() ? programModels.Average(p => p.CoursesCount) : 0;
+        avgFacultyWorkload = programModels.Any() ? programModels.Average(p => p.AvgFacultyWorkload) : 0;
+
+        BuildDeptPie();
+        BuildCoursesBar();
+        BuildWorkloadPie();
+        StateHasChanged();
+    }
+
+    private void BuildDeptPie()
+    {
+        var labels = programModels.Select(p => p.Name).ToArray();
+        var data = programModels.Select(p => (double)p.Students).ToArray();
+        if (data.All(d => d == 0))
+        {
+            deptPieLabels = Array.Empty<string>();
+            deptPieSeries = new();
+            return;
+        }
+
+        deptPieLabels = labels;
+        deptPieSeries = new List<ChartSeries> { new ChartSeries { Name = "Students", Data = data } };
+    }
+
+    private void BuildCoursesBar()
+    {
+        var labels = programModels.Select(p => p.Name).ToArray();
+        var data = programModels.Select(p => (double)p.CoursesCount).ToArray();
+        coursesBarLabels = labels;
+        coursesBarSeries = new List<ChartSeries> { new ChartSeries { Name = "Courses", Data = data } };
+    }
+
+    private void BuildWorkloadPie()
+    {
+        // categorize programs by average workload (Low/Med/High)
+        var low = programModels.Count(p => p.AvgFacultyWorkload <= 10);
+        var med = programModels.Count(p => p.AvgFacultyWorkload > 10 && p.AvgFacultyWorkload <= 13);
+        var high = programModels.Count(p => p.AvgFacultyWorkload > 13);
+
+        var labels = new[] { "Low", "Medium", "High" };
+        var data = new[] { (double)low, (double)med, (double)high };
+
+        if (data.All(d => d == 0))
+        {
+            workloadPieLabels = Array.Empty<string>();
+            workloadPieSeries = new();
+            return;
+        }
+
+        workloadPieLabels = labels;
+        workloadPieSeries = new List<ChartSeries> { new ChartSeries { Name = "Programs by Workload", Data = data } };
+    }
+
+    private void OnSearchInput(ChangeEventArgs args)
+    {
+        searchTerm = args?.Value?.ToString() ?? string.Empty;
+        StateHasChanged();
+    }
+
+    private void ShowProgramDetails(ProgramModel p)
+    {
+        // quick client-side details: show a small snackbar; replace with a dialog if you prefer
+        Snackbar.Add($"{p.Name}: {p.Students} students • {p.CoursesCount} courses • Avg workload {p.AvgFacultyWorkload:F1} hrs", Severity.Info);
+    }
+
+    private void NavigateToProgram(ProgramModel p)
+    {
+        // adjust this route to your app; placeholder navigation
+        Navigation.NavigateTo($"/programs/{Uri.EscapeDataString(p.Name)}");
+    }
+
+    private async Task ExportCsv()
+    {
+        if (programModels == null || !programModels.Any())
+        {
+            Snackbar.Add("No programs to export", Severity.Warning);
+            return;
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Name,Students,Courses,AvgFacultyWorkload");
+        foreach (var p in programModels)
+        {
+            sb.AppendLine($"\"{p.Name}\",{p.Students},{p.CoursesCount},{p.AvgFacultyWorkload}");
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        await JS.InvokeVoidAsync("blazorDownloadFile", $"programs-{DateTime.Now:yyyyMMdd}.csv", Convert.ToBase64String(bytes), "text/csv");
+        Snackbar.Add("Exported CSV", Severity.Success);
+    }
+}

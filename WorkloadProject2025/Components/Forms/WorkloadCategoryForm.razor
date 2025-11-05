@@ -1,0 +1,85 @@
+﻿@inject WorkloadCategoryService workloadCategoryService
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="workloadCategory" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+
+            <MudStack Spacing="2">
+
+                <MudTextField Label="Minimum Hours"
+                              @bind-Value="workloadCategory.MinimumHours"
+                              For="@(() => workloadCategory.MinimumHours)"
+                              T="int?"
+                              Class="mb-2"
+                              Required="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.ArrowDownward">
+                </MudTextField>
+
+                <MudTextField Label="Maximum Hours"
+                              @bind-Value="workloadCategory.MaximumHours"
+                              For="@(() => workloadCategory.MaximumHours)"
+                              T="int?"
+                              Class="mb-2"
+                              Required="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.ArrowUpward">
+                </MudTextField>
+
+                <MudDatePicker Label="Start Date"
+                               @bind-Date="workloadCategory.StartDate"
+                               For="@(() => workloadCategory.StartDate)"
+                               Class="mb-2"
+                               Required="true"
+                               DateFormat="MM/dd/yyyy"
+                               PickerVariant="PickerVariant.Dialog"
+                               Variant="Variant.Filled"
+                               Adornment="Adornment.End"
+                               AdornmentIcon="@Icons.Material.Filled.CalendarToday">
+                </MudDatePicker>
+                <MudDatePicker Label="End Date"
+                               @bind-Date="workloadCategory.EndDate"
+                               For="@(() => workloadCategory.EndDate)"
+                               Class="mb-2"
+                               DateFormat="MM/dd/yyyy"
+                               PickerVariant="PickerVariant.Dialog"
+                               Variant="Variant.Filled"
+                               Adornment="Adornment.End"
+                               AdornmentIcon="@Icons.Material.Filled.CalendarToday">
+                </MudDatePicker>
+
+            </MudStack>
+
+            <MudCardActions Class="mt-4 d-flex justify-center">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                <MudStaticButton Color="Color.Primary" Variant="Variant.Filled" FormAction="FormAction.Submit">Save</MudStaticButton>
+            </MudCardActions>
+
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter]
+    public EventCallback<Department> OnSaved { get; set; }
+
+    private WorkloadCategory workloadCategory { get; set; } = new WorkloadCategory();
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async void Save()
+    {
+        await workloadCategoryService.AddAsync(workloadCategory);
+        await OnSaved.InvokeAsync();
+        workloadCategory = new WorkloadCategory();
+        MudDialog.Close(DialogResult.Ok(true));
+        StateHasChanged();
+    }
+}

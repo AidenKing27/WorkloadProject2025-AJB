@@ -1,0 +1,76 @@
+﻿@page "/workloadcategorypage"
+
+@inject WorkloadCategoryService workloadCategoryService
+@inject IDialogService dialogService
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6" Class="font-semibold">Current Workload Categories</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenFormDialog">Add New Workload Category</MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudDataGrid Items="@workloadCategories"
+                     Dense="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Id" Title="Category" />
+                <PropertyColumn Property="x => x.MinimumHours" Title="Minimum Hours" />
+                <PropertyColumn Property="x => x.MaximumHours" Title="Maximum Hours" />
+                <TemplateColumn CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudStack Row>
+                            <MudButton Size="@Size.Small" Variant="@Variant.Filled" Color="@Color.Secondary"
+                                       OnClick="() => DeleteRecord(context.Item)">Delete</MudButton>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    private List<WorkloadCategory> workloadCategories = new List<WorkloadCategory>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        workloadCategories = await workloadCategoryService.GetAllAsync();
+    }
+
+    private async Task OpenFormDialog()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await dialogService.ShowAsync<WorkloadCategoryForm>("Add New Workload Category", options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await ReloadData();
+        }
+    }
+
+    private async Task<bool> DeleteRecord(WorkloadCategory workloadCategory)
+    {
+        bool result = workloadCategoryService.DeleteAsync(workloadCategory).Result;
+        await ReloadData();
+
+        return result;
+    }
+
+    public async Task ReloadData()
+    {
+        workloadCategories = await workloadCategoryService.GetAllAsync();
+        StateHasChanged();
+    }
+}

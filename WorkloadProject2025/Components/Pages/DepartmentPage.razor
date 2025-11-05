@@ -1,0 +1,84 @@
+﻿@page "/departmentpage"
+
+@inject DepartmentService departmentService
+@inject SchoolService schoolService
+@inject IDialogService dialogService
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6" Class="font-semibold">Current Departments</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenFormDialog">Add New Department</MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudDataGrid Items="@departments"
+                     Dense="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Department" />
+                <PropertyColumn Property="x => x.School.Name" Title="School" />
+                <PropertyColumn Property="x => x.ProgramsOfStudy.Count()" Title="# of Programs" />
+                <TemplateColumn CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudStack Row>
+                            <MudButton Size="@Size.Small" Variant="@Variant.Filled" Color="@Color.Secondary"
+                                       OnClick="() => DeleteRecord(context.Item)">Delete</MudButton>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    private List<School> schools = new List<School>();
+    private List<Department> departments = new List<Department>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        schools = await schoolService.GetAllAsync();
+        departments = await departmentService.GetAllAsync();
+    }
+
+    private async Task OpenFormDialog()
+    {
+        var parameters = new DialogParameters<DepartmentForm>
+        {
+            { x => x.Schools, schools }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await dialogService.ShowAsync<DepartmentForm>("Add New Department", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await ReloadData();
+        }
+    }
+
+    private async Task<bool> DeleteRecord(Department department)
+    {
+        bool result = await departmentService.DeleteAsync(department);
+        await ReloadData();
+
+        return result;
+    }
+
+    public async Task ReloadData()
+    {
+        departments = await departmentService.GetAllAsync();
+        StateHasChanged();
+    }
+}

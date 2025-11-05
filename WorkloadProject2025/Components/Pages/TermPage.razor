@@ -1,0 +1,76 @@
+﻿@page "/termpage"
+
+@inject TermService termService
+@inject IDialogService dialogService
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6" Class="font-semibold">Current Terms</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenFormDialog">Add New Term</MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudDataGrid Items="@terms"
+                     Dense="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Term" />
+                <PropertyColumn Property="x => x.StartDate" Title="Start Date" Format="yyyy/MM/dd" />
+                <PropertyColumn Property="x => x.EndDate" Title="End Date" Format="yyyy/MM/dd" />
+                <TemplateColumn CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudStack Row>
+                            <MudButton Size="@Size.Small" Variant="@Variant.Filled" Color="@Color.Secondary"
+                                       OnClick="() => DeleteRecord(context.Item)">Delete</MudButton>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+
+    private List<Term> terms = new List<Term>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        terms = await termService.GetAllAsync();
+    }
+
+    private async Task OpenFormDialog()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await dialogService.ShowAsync<TermForm>("Add New Term", options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await ReloadData();
+        }
+    }
+
+    private async Task<bool> DeleteRecord(Term term)
+    {
+        bool result = await termService.DeleteAsync(term);
+        await ReloadData();
+
+        return result;
+    }
+
+    public async Task ReloadData()
+    {
+        terms = await termService.GetAllAsync();
+        StateHasChanged();
+    }
+}

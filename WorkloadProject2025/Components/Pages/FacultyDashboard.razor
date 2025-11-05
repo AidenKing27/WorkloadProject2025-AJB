@@ -1,0 +1,321 @@
+﻿@page "/facultydashboard"
+
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Faculty Workload</PageTitle>
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h4" Class="font-semibold">Faculty Dashboard</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <!-- Summary -->
+        <MudGrid Class="mb-3">
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.caption">Total Faculty</MudText>
+                    <MudText Typo="Typo.h5">@totalFaculty</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.caption">Avg Workload (hrs/sem)</MudText>
+                    <MudText Typo="Typo.h5">@averageWorkloadHours.ToString("F1")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.caption">Avg Students / Faculty</MudText>
+                    <MudText Typo="Typo.h5">@averageStudentsPerFaculty.ToString("F0")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem Xs="12" Sm="6" Md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.caption">Total Courses</MudText>
+                    <MudText Typo="Typo.h5">@totalCourses</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Filters: Department only -->
+        <MudPaper Class="pa-4 mb-4" Elevation="0">
+            <MudGrid AlignItems="Center">
+                <MudItem Xs="12" Sm="8" Md="8">
+                    <MudSelect T="string" Label="Department" @bind-Value="SelectedDepartment" Dense="true" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("All")">All Departments</MudSelectItem>
+                        @foreach (var d in departments)
+                        {
+                            <MudSelectItem Value="@d">@d</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem Xs="12" Sm="4" Md="4" Class="d-flex justify-end">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ExportFilteredCsv" Disabled="@(filteredWorkloadData == null || !filteredWorkloadData.Any())" StartIcon="@Icons.Material.Filled.FileDownload">Export</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Table + side panel -->
+        <MudGrid>
+            <MudItem Xs="12" Md="@(selectedFaculty != null ? 8 : 12)">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Faculty Workload</MudText>
+
+                    @if (isLoading)
+                    {
+                        <MudText Typo="Typo.body2">Loading data...</MudText>
+                    }
+
+                    @if (!isLoading && (filteredWorkloadData == null || !filteredWorkloadData.Any()))
+                    {
+                        <MudText Typo="Typo.body2">No workload data available for the selected filters.</MudText>
+                    }
+
+                    @if (!isLoading && filteredWorkloadData != null && filteredWorkloadData.Any())
+                    {
+                        <MudTable T="FacultyWorkloadModel" Items="filteredWorkloadData" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" OnRowClick="OnFacultyRowClick">
+                            <HeaderContent>
+                                <MudTh>Faculty</MudTh>
+                                <MudTh>Department</MudTh>
+                                <MudTh>Total Courses</MudTh>
+                                <MudTh>Workload (hrs)</MudTh>
+                                <MudTh>Total Students</MudTh>
+                                <MudTh>Contact</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="item">
+                                <MudTd DataLabel="Faculty">@item.FacultyName</MudTd>
+                                <MudTd DataLabel="Department">@item.Department</MudTd>
+                                <MudTd DataLabel="Total Courses">@item.TotalCourses</MudTd>
+                                <MudTd DataLabel="Workload">
+                                    <MudChip T="string" Color="@GetWorkloadColor(item.TotalWorkloadHours)" Size="Size.Small">@item.TotalWorkloadHours.ToString("F1")</MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Total Students">@item.TotalStudents</MudTd>
+                                <MudTd DataLabel="Contact">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Primary" OnClick="@(() => CopyToClipboard(item.Email))" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Color="Color.Primary" OnClick="@(() => CopyToClipboard(item.Phone))" Class="ml-1" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            @if (selectedFaculty != null)
+            {
+                <MudItem Xs="12" Md="4">
+                    <MudPaper Class="pa-4" Elevation="1" Style="position: sticky; top: 16px;">
+                        <div class="d-flex justify-between">
+                            <MudText Typo="Typo.h6">@selectedFaculty.FacultyName</MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="(() => selectedFaculty = null)" />
+                        </div>
+
+                        <MudText Typo="Typo.body2">@selectedFaculty.Position • @selectedFaculty.Department</MudText>
+                        <MudDivider Class="my-2" />
+
+                        <MudText Typo="Typo.subtitle2">Schedule</MudText>
+                        @foreach (var c in selectedFaculty.Courses)
+                        {
+                            <MudPaper Class="pa-2 mb-2" Elevation="0">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">@c.CourseName</MudText>
+                                <MudText Typo="Typo.caption">@c.DeliveryType — @c.Hours.ToString("F1") hrs/week</MudText>
+                                <MudText Typo="Typo.caption">Students: @c.Students</MudText>
+                            </MudPaper>
+                        }
+
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle2">Contact</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-1" /> @selectedFaculty.Email</MudText>
+                        <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Phone" Class="mr-1" /> @selectedFaculty.Phone</MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<FacultyPage></FacultyPage>
+
+@code {
+    // lightweight local model used by the page (self-contained)
+    public class FacultyWorkloadModel
+    {
+        public string FacultyEmail { get; set; } = "";
+        public string FacultyName { get; set; } = "";
+        public string Department { get; set; } = "";
+        public string Position { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public int TotalCourses { get; set; }
+        public double TotalWorkloadHours { get; set; }
+        public int TotalStudents { get; set; }
+        public List<CourseScheduleItem> Courses { get; set; } = new();
+        public string Semester { get; set; } = "";
+        public string Email => FacultyEmail;
+    }
+
+    public class CourseScheduleItem
+    {
+        public string CourseName { get; set; } = "";
+        public string DeliveryType { get; set; } = "";
+        public double Hours { get; set; }
+        public int Students { get; set; }
+    }
+
+    // UI state (sample data so page compiles out-of-the-box)
+    private List<FacultyWorkloadModel> allWorkloads = new();
+    private List<string> departments = new();
+    private List<FacultyWorkloadModel> filteredWorkloadData = new();
+    private FacultyWorkloadModel? selectedFaculty;
+    private bool isLoading = true;
+
+    private string _selectedDepartment = "All";
+    private string SelectedDepartment
+    {
+        get => _selectedDepartment;
+        set { if (_selectedDepartment == value) return; _selectedDepartment = value; ApplyFilters(); }
+    }
+
+    // summary
+    private int totalFaculty = 0;
+    private double averageWorkloadHours = 0;
+    private double averageStudentsPerFaculty = 0;
+    private int totalCourses = 0;
+
+    protected override Task OnInitializedAsync()
+    {
+        SeedSampleData();
+        BuildDerivedData();
+        isLoading = false;
+        return Task.CompletedTask;
+    }
+
+    private void SeedSampleData()
+    {
+        departments = new List<string> { "ITEC", "ACCT", "ABST" };
+
+        allWorkloads = new List<FacultyWorkloadModel>
+        {
+            new FacultyWorkloadModel
+            {
+                FacultyEmail = "derek.maki@uni.edu",
+                FacultyName = "Derek Maki",
+                Department = "ITEC",
+                Position = "Professor",
+                Phone = "555-0101",
+                TotalCourses = 3,
+                TotalWorkloadHours = 12.5,
+                TotalStudents = 78,
+                Semester = "Fall 2024",
+                Courses = new List<CourseScheduleItem>
+                {
+                    new CourseScheduleItem { CourseName="ITEC 100", DeliveryType="Lecture", Hours=4, Students=28 },
+                    new CourseScheduleItem { CourseName="ITEC 110", DeliveryType="Lab", Hours=3, Students=25 },
+                    new CourseScheduleItem { CourseName="ITEC 140", DeliveryType="Lecture", Hours=5.5, Students=25 }
+                }
+            },
+            new FacultyWorkloadModel
+            {
+                FacultyEmail = "andrew.strange@uni.edu",
+                FacultyName = "Andrew Strange",
+                Department = "ACCT",
+                Position = "Associate Professor",
+                Phone = "555-0102",
+                TotalCourses = 2,
+                TotalWorkloadHours = 9.0,
+                TotalStudents = 60,
+                Semester = "Fall 2024",
+                Courses = new List<CourseScheduleItem>
+                {
+                    new CourseScheduleItem { CourseName="ACCT 111", DeliveryType="Lecture", Hours=4.5, Students=30 },
+                    new CourseScheduleItem { CourseName="ACCT 213", DeliveryType="Lecture", Hours=4.5, Students=30 }
+                }
+            },
+            new FacultyWorkloadModel
+            {
+                FacultyEmail = "steve.l@uni.edu",
+                FacultyName = "Steve L",
+                Department = "ITEC",
+                Position = "Assistant Professor",
+                Phone = "555-0103",
+                TotalCourses = 4,
+                TotalWorkloadHours = 16.0,
+                TotalStudents = 120,
+                Semester = "Fall 2024",
+                Courses = new List<CourseScheduleItem>
+                {
+                    new CourseScheduleItem { CourseName="ITEC 150", DeliveryType="Lecture", Hours=4, Students=30 },
+                    new CourseScheduleItem { CourseName="ITEC 170", DeliveryType="Lab", Hours=4, Students=30 },
+                    new CourseScheduleItem { CourseName="ITEC 190", DeliveryType="Lecture", Hours=4, Students=30 },
+                    new CourseScheduleItem { CourseName="ITEC 240", DeliveryType="Lab", Hours=4, Students=30 }
+                }
+            }
+        };
+    }
+
+    private void BuildDerivedData()
+    {
+        // currently sample data already in the shape we need
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredWorkloadData = allWorkloads
+            .Where(w => (SelectedDepartment == "All" || w.Department == SelectedDepartment))
+            .OrderByDescending(w => w.TotalWorkloadHours)
+            .ToList();
+
+        // recalc stats
+        totalFaculty = filteredWorkloadData.Count;
+        averageWorkloadHours = filteredWorkloadData.Any() ? filteredWorkloadData.Average(x => x.TotalWorkloadHours) : 0;
+        averageStudentsPerFaculty = filteredWorkloadData.Any() ? filteredWorkloadData.Average(x => x.TotalStudents) : 0;
+        totalCourses = filteredWorkloadData.Sum(x => x.TotalCourses);
+
+        if (selectedFaculty != null && !filteredWorkloadData.Contains(selectedFaculty))
+            selectedFaculty = null;
+    }
+
+    private void OnFacultyRowClick(TableRowClickEventArgs<FacultyWorkloadModel> args)
+    {
+        selectedFaculty = args.Item;
+    }
+
+    private Color GetWorkloadColor(double hours)
+    {
+        if (hours > 15) return Color.Error;
+        if (hours > 10) return Color.Warning;
+        return Color.Success;
+    }
+
+    private async Task CopyToClipboard(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", value);
+        Snackbar.Add("Copied to clipboard", Severity.Success);
+    }
+
+    private async Task ExportFilteredCsv()
+    {
+        if (filteredWorkloadData == null || !filteredWorkloadData.Any())
+        {
+            Snackbar.Add("Nothing to export", Severity.Warning);
+            return;
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Faculty,Department,Position,TotalCourses,TotalWorkloadHours,TotalStudents,Email,Phone");
+        foreach (var f in filteredWorkloadData)
+        {
+            sb.AppendLine($"\"{f.FacultyName}\",\"{f.Department}\",\"{f.Position}\",{f.TotalCourses},{f.TotalWorkloadHours},{f.TotalStudents},\"{f.Email}\",\"{f.Phone}\"");
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        await JS.InvokeVoidAsync("blazorDownloadFile", $"workload-{DateTime.Now:yyyyMMdd}.csv", Convert.ToBase64String(bytes), "text/csv");
+        Snackbar.Add("Exported CSV", Severity.Success);
+    }
+}

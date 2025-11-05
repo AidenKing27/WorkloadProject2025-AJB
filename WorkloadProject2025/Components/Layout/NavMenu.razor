@@ -1,0 +1,72 @@
+﻿@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+
+    @* <MudNavLink Href="facultypage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Faculty</MudNavLink>
+    <MudNavLink Href="schoolpage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.School">Schools</MudNavLink>
+    <MudNavLink Href="departmentpage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Business">Departments</MudNavLink>
+    <MudNavLink Href="programofstudypage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Article">Programs</MudNavLink> *@
+    @* <MudNavLink Href="workloadpage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AssignmentInd">Workloads</MudNavLink> *@
+
+    <MudNavLink Href="workloadcategorypage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Apps">Workload Category</MudNavLink>
+    <MudNavLink Href="termpage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Terms</MudNavLink>
+    <MudNavLink Href="schooldashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.School">School</MudNavLink>
+    <MudNavLink Href="departmentdashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Business">Department</MudNavLink>
+    <MudNavLink Href="programdashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Article">Program</MudNavLink>
+    <MudNavLink Href="coursepage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Book">Courses (*)</MudNavLink>
+    <MudNavLink Href="facultydashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Faculty</MudNavLink>
+    <MudNavLink Href="workloaddashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AssignmentInd">Workload</MudNavLink>
+    <MudNavLink Href="facultyworkloadpage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AssignmentInd">Faculty Workloads</MudNavLink>
+    <MudNavLink Href="semesterdashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">Semester</MudNavLink>
+
+    <MudNavLink Href="faculty-workload-dashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">TEST Dashboard</MudNavLink>
+
+    <MudDivider />
+    <MudNavLink Href="auth" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Lock">Auth Required</MudNavLink>
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="Account/Manage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">@context.User.Identity?.Name</MudNavLink>
+            <form action="Account/Logout" method="post">
+
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+
+                <button type="submit" class="mud-nav-link mud-ripple">
+
+                    <MudIcon Icon="@Icons.Material.Filled.Logout" Color="Color.Info" Class="mr-3"></MudIcon> Logout
+                </button>
+            </form>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavLink Href="Account/Register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Register</MudNavLink>
+            <MudNavLink Href="Account/Login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Password">Login</MudNavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+
+</MudNavMenu>
+
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}
+
