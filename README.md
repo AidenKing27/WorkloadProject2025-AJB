@@ -12,8 +12,8 @@ MAKE YOUR CHANGES ON THE SEPARATE BRANCH WITH YOUR NAME
 - [x] Update faculty table to include a bool for IsFulltime and display on faculty page (Josh)
 	- [x] Update the FacultyForm to include this checkbox (Josh)
 	
-- [ ] Update workload table to directly assign term instead of assigning term to course, remove term from course table (Aiden)
-	- [ ] Update the WorkloadForm to include this dropdown to select Term (Aiden)
+- [x] Update workload table to directly assign term instead of assigning term to course, remove term from course table (Aiden)
+	- [x] Update the WorkloadForm to include this dropdown to select Term (Aiden)
 	
 - [ ] Display subtotals per program and grand totals for faculty member (to determine category) apply this for the Faculty Workload Page (Josh)
 
