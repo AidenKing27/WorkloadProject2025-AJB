@@ -45,7 +45,13 @@
                                     Adornment="Adornment.Start"
                                     AdornmentIcon="@Icons.Material.Filled.Phone">
                 </MudStaticTextField>
-
+                <MudCheckBox Label="Full Time"
+                             @bind-Value="faculty.IsFullTime"
+                             For="@(() => faculty.IsFullTime)"
+                             T="bool"
+                             Class="mb-2"
+                             Style="margin-left:-15px">
+                </MudCheckBox>
                 <MudSelect Label="Workload Category"
                            @bind-value="faculty.WorkloadCategoryId"
                            For="@(() => faculty.WorkloadCategoryId)"
