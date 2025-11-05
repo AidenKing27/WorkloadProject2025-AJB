@@ -21,7 +21,7 @@ MAKE YOUR CHANGES ON THE SEPARATE BRANCH WITH YOUR NAME
 
 - [ ] Fix functionality for CSV exporting from each respective dashboard (?)
 
-- [ ] Add a Course Dashboard page? (?)
+- [ ] Add a Course Dashboard page? (Balkaran)
 
 - [ ] Display all Faculty in a respective Program on the Program Dashboard (add to other dashboards?) (?)
 
