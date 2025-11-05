@@ -5,9 +5,9 @@ MAKE YOUR CHANGES ON THE SEPARATE BRANCH WITH YOUR NAME
 # Objectives:
 - [ ] Normalize all pages to use same UI design patterns (Aiden)
 
-- [ ] Remove hard coded data from prototype pages and replace with actual database values (Balkaran)
+- [ ] Remove hard coded data from prototype pages and replace with actual database values (School, Department, Program) (Balkaran)
 
-- [ ] Determine if we need to include the current FacultyWorkloadDashboard.razor page, do we need to combine all our workload pages into one? (?)
+- [ ] Flesh out the Workload Dashboard and remove fake data (Aiden)
 
 - [ ] Update faculty table to include a bool for IsFulltime and display on faculty page (Josh)
 	- [ ] Update the FacultyForm to include this checkbox (Josh)
@@ -15,15 +15,15 @@ MAKE YOUR CHANGES ON THE SEPARATE BRANCH WITH YOUR NAME
 - [ ] Update workload table to directly assign term instead of assigning term to course, remove term from course table (Aiden)
 	- [ ] Update the WorkloadForm to include this dropdown to select Term (Aiden)
 	
-- [ ] Display subtotals per program and grand totals for faculty member (to determine category) apply this for the Faculty Workload Page (?)
+- [ ] Display subtotals per program and grand totals for faculty member (to determine category) apply this for the Faculty Workload Page (Josh)
 
-- [ ] Display entire grand total of all workload hours per program on the Program Dashboard (?)
+- [ ] Display entire grand total of all workload hours per program on the Program Dashboard (Aiden)
 
-- [ ] Fix functionality for CSV exporting from each respective dashboard (?)
+- [ ] Fix functionality for CSV exporting from each respective dashboard (Balkaran)
 
 - [ ] Add a Course Dashboard page? (Balkaran)
 
-- [ ] Display all Faculty in a respective Program on the Program Dashboard (add to other dashboards?) (?)
+- [ ] Display all Faculty in a respective Program on the Program Dashboard (add to other dashboards?) (Josh)
 
 
 # Back Burner:
