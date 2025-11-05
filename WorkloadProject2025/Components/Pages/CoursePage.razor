@@ -2,7 +2,6 @@
 
 @inject ProgramOfStudyService programService
 @inject CourseService courseService
-@inject TermService termService
 @inject IDialogService dialogService
 
 <MudCard Class="mx-auto mt-6" Style="max-width: 1400px;">
@@ -21,7 +20,6 @@
             <Columns>
                 <PropertyColumn Property="x => x.Name" Title="Course" />
                 <PropertyColumn Property="x => x.Program.Name" Title="Program" />
-                <PropertyColumn Property="x => x.Term.Name" Title="Term" />
                 <PropertyColumn Property="x => x.Hours" Title="Hours" />
                 <TemplateColumn CellClass="d-flex justify-end">
                     <CellTemplate>
@@ -40,11 +38,11 @@
 
     private List<ProgramOfStudy> programs = new List<ProgramOfStudy>();
     private List<Course> courses = new List<Course>();
-    private List<Term> terms = new List<Term>();
+    
 
     protected override async Task OnInitializedAsync()
     {
-        terms = await termService.GetAllAsync();
+        
         programs = await programService.GetAllAsync();
         courses = await courseService.GetAllAsync();
     }
@@ -54,7 +52,6 @@
         var parameters = new DialogParameters<CourseForm>
         {
             { x => x.Programs, programs },
-            { x => x.Terms, terms }
         };
 
         var options = new DialogOptions

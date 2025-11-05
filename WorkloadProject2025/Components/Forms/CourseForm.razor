@@ -45,24 +45,7 @@
                     }
                 </MudSelect>
 
-                <MudSelect Label="Term"
-                           @bind-value="course.TermId"
-                           For="@(() => course.TermId)"
-                           T="int?"
-                           Class="mb-2"
-                           Required="true"
-                           Immediate="true"
-                           Adornment="Adornment.Start"
-                           AdornmentIcon="@Icons.Material.Filled.List">
-                    <MudSelectItem T="int?" Value="@(null)">Select a Term</MudSelectItem>
-                    @foreach (var t in Terms)
-                    {
-                        <MudSelectItem T="int?" Value="@t.Id">@t.Name</MudSelectItem>
-                    }
-                </MudSelect>
-
                 <ValidationMessage For="@(() => course.ProgramId)" />
-                <ValidationMessage For="@(() => course.TermId)" />
 
             </MudStack>
 
@@ -84,8 +67,6 @@
 
     [Parameter]
     public List<ProgramOfStudy> Programs { get; set; }
-    [Parameter]
-    public List<Term> Terms { get; set; }
 
     private Course course { get; set; } = new Course();
 

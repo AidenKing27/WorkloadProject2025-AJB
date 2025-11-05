@@ -5,6 +5,7 @@
 @inject DepartmentService departmentService
 @inject ProgramOfStudyService programService
 @inject CourseService courseService
+@inject TermService termService
 @inject WorkloadService workloadService
 @inject IDialogService dialogService
 
@@ -93,11 +94,16 @@
 
                     <PropertyColumn Property="x => x.Section"
                                     Title="Section"
-                                    Editable="true" 
+                                    Editable="true"
                                     CellStyle="width: 100px;" />
 
                     <PropertyColumn Property="x => x.Hours"
                                     Title="Hours"
+                                    Editable="true"
+                                    CellStyle="width: 100px;" />
+
+                    <PropertyColumn Property="x => x.Term"
+                                    Title="Term"
                                     Editable="true"
                                     CellStyle="width: 100px;" />
 
@@ -122,11 +128,12 @@
 
     private List<Workload> workloads = new List<Workload>();
     private List<Workload> tmpWorkloads = new List<Workload>();
+    private List<Faculty> faculty = new List<Faculty>();
     private List<School> schools = new List<School>();
     private List<Department> departments = new List<Department>();
     private List<ProgramOfStudy> programs = new List<ProgramOfStudy>();
     private List<Course> courses = new List<Course>();
-    private List<Faculty> faculty = new List<Faculty>();
+    private List<Term> terms = new List<Term>();
 
     private Workload workload { get; set; } = new Workload();
 
@@ -139,6 +146,7 @@
         departments = await departmentService.GetAllAsync();
         programs = await programService.GetAllAsync();
         courses = await courseService.GetAllAsync();
+        terms = await termService.GetAllAsync();
     }
 
     private async Task OnCommittedItemChanges(Workload item)
@@ -190,6 +198,7 @@
             { x => x.Departments, departments },
             { x => x.Programs, programs },
             { x => x.Courses, courses },
+            { x => x.Terms, terms }
         };
 
         var options = new DialogOptions
