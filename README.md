@@ -1,29 +1,29 @@
 ## Aiden, Josh, Balkaran
 
-MAKE YOUR CHANGES ON A SEPARATE BRANCH ON THE REPO I WILL MAKE WITH MY CURRENT APP, WE WILL MERGE AFTER
+MAKE YOUR CHANGES ON THE SEPARATE BRANCH WITH YOUR NAME
 
 # Objectives:
-- [ ] normalize all pages to use same UI design patterns (Aiden)
+- [ ] Normalize all pages to use same UI design patterns (Aiden)
 
-- [ ] remove hard coded data from prototype pages and replace with actual database values (Balkaran)
+- [ ] Remove hard coded data from prototype pages and replace with actual database values (Balkaran)
 
-- [ ] determine if we need to include the current FacultyWorkloadDashboard.razor page, do we need to combine all our workload pages into one? (?)
+- [ ] Determine if we need to include the current FacultyWorkloadDashboard.razor page, do we need to combine all our workload pages into one? (?)
 
-- [ ] update faculty table to include a bool for IsFulltime and display on faculty page (Josh)
-	- [ ] update the FacultyForm to include this checkbox (Josh)
+- [ ] Update faculty table to include a bool for IsFulltime and display on faculty page (Josh)
+	- [ ] Update the FacultyForm to include this checkbox (Josh)
 	
-- [ ] update workload table to directly assign term instead of assigning term to course, remove term from course table (Aiden)
-	- [ ] update the WorkloadForm to include this dropdown to select Term (Aiden)
+- [ ] Update workload table to directly assign term instead of assigning term to course, remove term from course table (Aiden)
+	- [ ] Update the WorkloadForm to include this dropdown to select Term (Aiden)
 	
-- [ ] display subtotals per program and grand totals for faculty member (to determine category) apply this for the Faculty Workload Page (?)
+- [ ] Display subtotals per program and grand totals for faculty member (to determine category) apply this for the Faculty Workload Page (?)
 
-- [ ] display entire grand total of all workload hours per program on the Program Dashboard (?)
+- [ ] Display entire grand total of all workload hours per program on the Program Dashboard (?)
 
-- [ ] fix functionality for CSV exporting from each respective dashboard (?)
+- [ ] Fix functionality for CSV exporting from each respective dashboard (?)
 
-- [ ] add a Course Dashboard page? (?)
+- [ ] Add a Course Dashboard page? (?)
 
-- [ ] display all Faculty in a respective Program on the Program Dashboard (add to other dashboards?) (?)
+- [ ] Display all Faculty in a respective Program on the Program Dashboard (add to other dashboards?) (?)
 
 
 # Back Burner:
@@ -35,10 +35,10 @@ MAKE YOUR CHANGES ON A SEPARATE BRANCH ON THE REPO I WILL MAKE WITH MY CURRENT A
 
 - [ ] UNSURE: better displaying and filtering for faculty (?)
 
-- [ ] add additional course types for release/sick leave/overload/chair release (?)
+- [ ] Add additional course types for release/sick leave/overload/chair release (?)
 
-- [ ] check other factors to determine split if its 50/50 for the primary/co (?)
+- [ ] Check other factors to determine split if its 50/50 for the primary/co (?)
 
-- [ ] historical data (?)
+- [ ] Historical data (?)
 
-- [ ] permission levels (?)
+- [ ] Permission levels (?)
