@@ -15,4 +15,5 @@ public class Faculty
     [Required(ErrorMessage = "You must select a workload category")]
     public int? WorkloadCategoryId { get; set; }
     public WorkloadCategory WorkloadCategory { get; set; }
+    public bool IsFullTime { get; set; }
 }

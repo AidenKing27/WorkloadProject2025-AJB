@@ -9,8 +9,8 @@ MAKE YOUR CHANGES ON THE SEPARATE BRANCH WITH YOUR NAME
 
 - [ ] Flesh out the Workload Dashboard and remove fake data (Aiden)
 
-- [ ] Update faculty table to include a bool for IsFulltime and display on faculty page (Josh)
-	- [ ] Update the FacultyForm to include this checkbox (Josh)
+- [x] Update faculty table to include a bool for IsFulltime and display on faculty page (Josh)
+	- [x] Update the FacultyForm to include this checkbox (Josh)
 	
 - [ ] Update workload table to directly assign term instead of assigning term to course, remove term from course table (Aiden)
 	- [ ] Update the WorkloadForm to include this dropdown to select Term (Aiden)
