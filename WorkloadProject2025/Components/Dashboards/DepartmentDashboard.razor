@@ -13,32 +13,6 @@
     </MudCardHeader>
 
     <MudCardContent>
-@*         <MudGrid Justify="Justify.Center">
-            <MudItem Xs="12" Sm="6" Md="4" Lg="3">
-                <MudCard Class="hover-card text-center py-6" @onclick="@(() => Navigation.NavigateTo("programofstudypage"))">
-                    <MudIcon Icon="@Icons.Material.Filled.MenuBook" FontSize="70px" Color="@Color.Primary" />
-                    <MudText Typo="Typo.h6" Class="mt-2">Programs</MudText>
-                    <MudText Typo="Typo.body2">Programs</MudText>
-                </MudCard>
-            </MudItem>
-            <MudItem Xs="12" Sm="6" Md="4" Lg="3">
-                <MudCard Class="hover-card text-center py-6" @onclick="@(() => Navigation.NavigateTo("coursepage"))">
-                    <MudIcon Icon="@Icons.Material.Filled.Book" FontSize="70px" Color="@Color.Secondary" />
-                    <MudText Typo="Typo.h6" Class="mt-2">Courses</MudText>
-                    <MudText Typo="Typo.body2">Courses</MudText>
-                </MudCard>
-            </MudItem>
-            <MudItem Xs="12" Sm="6" Md="4" Lg="3">
-                <MudCard Class="hover-card text-center py-6" @onclick="@(() => Navigation.NavigateTo("facultypage"))">
-                    <MudIcon Icon="@Icons.Material.Filled.Person" FontSize="70px" Color="@Color.Tertiary" />
-                    <MudText Typo="Typo.h6" Class="mt-2">Faculty</MudText>
-                    <MudText Typo="Typo.body2">Faculty</MudText>
-                </MudCard>
-            </MudItem>
-        </MudGrid>
-
-        <MudDivider Class="my-6" />
- *@
         <!-- Department select + showing count (DROP-DOWN SHOWS CODE ONLY as requested) -->
         <MudGrid AlignItems="AlignItems.Center">
             <MudItem Xs="12" Sm="6" Md="8">
@@ -51,7 +25,7 @@
             </MudItem>
 
             <MudItem Xs="12" Sm="6" Md="4" Class="d-flex justify-end align-items-center">
-                <MudText Typo="Typo.caption" Class="me-3">Showing @KpiFacultyCount professors</MudText>
+                <MudText Typo="Typo.caption" Class="me-4">Showing @KpiFacultyCount professors</MudText>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@ExportCsv">
                     <MudIcon Icon="@Icons.Material.Filled.FileDownload" />&nbsp;Export CSV
                 </MudButton>

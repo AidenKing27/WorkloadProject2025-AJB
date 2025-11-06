@@ -15,7 +15,7 @@
 
     <MudCardContent>
         <!-- Top KPI row -->
-        <MudGrid Class="mb-3">
+        <MudGrid Class="mb-4">
             <MudItem Xs="12" Sm="6" Md="3">
                 <MudPaper Class="pa-4" Elevation="1">
                     <MudText Typo="Typo.caption">Programs</MudText>
@@ -82,13 +82,13 @@
                     <MudText Typo="Typo.h6">Students by Program</MudText>
                     @if (deptPieSeries.Any())
                     {
-                        <MudPaper Class="pa-4 mt-3 d-flex justify-center">
+                        <MudPaper Class="pa-4 mt-4 d-flex justify-center">
                             <MudChart ChartType="ChartType.Pie" ChartSeries="@deptPieSeries" XAxisLabels="@deptPieLabels" Width="320px" Height="320px" />
                         </MudPaper>
                     }
                     else
                     {
-                        <MudText Typo="Typo.body2" Class="text-secondary mt-3">No data</MudText>
+                        <MudText Typo="Typo.body2" Class="text-secondary mt-4">No data</MudText>
                     }
                 </MudPaper>
             </MudItem>
@@ -102,7 +102,7 @@
                     }
                     else
                     {
-                        <MudText Typo="Typo.body2" Class="text-secondary mt-3">No data</MudText>
+                        <MudText Typo="Typo.body2" Class="text-secondary mt-4">No data</MudText>
                     }
                 </MudPaper>
             </MudItem>
@@ -116,35 +116,11 @@
                     }
                     else
                     {
-                        <MudText Typo="Typo.body2" Class="text-secondary mt-3">No data</MudText>
+                        <MudText Typo="Typo.body2" Class="text-secondary mt-4">No data</MudText>
                     }
                 </MudPaper>
             </MudItem>
         </MudGrid>
-
-@*         <!-- Programs table -->
-        <MudPaper Class="pa-4 mt-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-2">Programs</MudText>
-            <MudTable T="ProgramModel" Items="VisiblePrograms" Hover="true" Dense="true" Bordered="true">
-                <HeaderContent>
-                    <MudTh>Program</MudTh>
-                    <MudTh style="width:100px">Students</MudTh>
-                    <MudTh style="width:100px">Courses</MudTh>
-                    <MudTh style="width:140px">Avg Workload (hrs)</MudTh>
-                    <MudTh style="width:160px" Class="text-right">Actions</MudTh>
-                </HeaderContent>
-                <RowTemplate Context="p">
-                    <MudTd DataLabel="Program">@p.Name</MudTd>
-                    <MudTd DataLabel="Students">@p.Students</MudTd>
-                    <MudTd DataLabel="Courses">@p.CoursesCount</MudTd>
-                    <MudTd DataLabel="Avg Workload">@p.AvgFacultyWorkload.ToString("F1")</MudTd>
-                    <MudTd Class="d-flex justify-end">
-                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => ShowProgramDetails(p))">Details</MudButton>
-                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" OnClick="@(() => NavigateToProgram(p))">Open</MudButton>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
-        </MudPaper> *@
     </MudCardContent>  
 </MudCard>
 

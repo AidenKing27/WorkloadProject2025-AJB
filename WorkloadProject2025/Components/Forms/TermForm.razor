@@ -56,7 +56,7 @@
     [CascadingParameter]
     IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter]
-    public EventCallback<Department> OnSaved { get; set; }
+    public EventCallback OnSaved { get; set; }
 
     private Term term { get; set; } = new Term();
 

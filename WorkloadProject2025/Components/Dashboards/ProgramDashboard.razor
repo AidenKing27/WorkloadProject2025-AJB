@@ -15,7 +15,7 @@
 
     <MudCardContent>
         <!-- KPI Row -->
-        <MudGrid Class="mb-3">
+        <MudGrid Class="mb-4">
             <MudItem Xs="12" Sm="6" Md="3">
                 <MudPaper Class="pa-4" Elevation="1">
                     <MudText Typo="Typo.caption">Programs</MudText>
@@ -112,30 +112,6 @@
                 </MudPaper>
             </MudItem>
         </MudGrid>
-
-@*         <!-- Programs table -->
-        <MudPaper Class="pa-4 mt-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-2">Programs</MudText>
-            <MudTable T="ProgramModel" Items="VisiblePrograms" Hover="true" Dense="true" Bordered="true">
-                <HeaderContent>
-                    <MudTh>Program</MudTh>
-                    <MudTh style="width:90px">Students</MudTh>
-                    <MudTh style="width:90px">Courses</MudTh>
-                    <MudTh style="width:120px">Avg Workload (hrs)</MudTh>
-                    <MudTh style="width:120px" Class="text-right">Actions</MudTh>
-                </HeaderContent>
-                <RowTemplate Context="p">
-                    <MudTd DataLabel="Program">@p.Name</MudTd>
-                    <MudTd DataLabel="Students">@p.Students</MudTd>
-                    <MudTd DataLabel="Courses">@p.CoursesCount</MudTd>
-                    <MudTd DataLabel="Avg Workload">@p.AvgFacultyWorkload.ToString("F1")</MudTd>
-                    <MudTd Class="d-flex justify-end">
-                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => ShowProgramDetails(p))">Details</MudButton>
-                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" OnClick="@(() => NavigateToProgram(p))">Open</MudButton>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
-        </MudPaper> *@
     </MudCardContent>
 </MudCard>
 
