@@ -83,8 +83,11 @@
                 </Columns>
             </MudDataGrid>
         </MudStack>
+        
+        
         @if (programTotals?.Any() == true)
         {
+            <MudText>Programs</MudText>
             @foreach (var p in programTotals)
             {
                 <MudCardContent Class="py-1">
@@ -123,7 +126,8 @@
     private List<Faculty> faculty = new List<Faculty>();
 
     int? totalHours;
-    private List<ProgramHours> programTotals = new();
+    private List<(string ProgramName, int TotalHours, List<Workload> Workloads)> programTotals = new();
+
     protected override async Task OnInitializedAsync()
     {
         workloads = await workloadService.GetAllAsync();
@@ -155,34 +159,24 @@
         BuildProgramTotals();
         StateHasChanged();
     }
+
     private void BuildProgramTotals()
     {
         programTotals = tmpWorkloads
             .Where(w => w.Course != null && w.Course.Program != null)
             .GroupBy(w => w.Course.Program.Name)
-            .Select(g => new ProgramHours
-            {
-                ProgramName = g.Key,
-                TotalHours = g.Sum(x => x.Hours ?? 0),
-                Workloads = g.ToList()
-            })
+            .Select(g => (ProgramName: g.Key,
+                          TotalHours: g.Sum(x => x.Hours ?? 0),
+                          Workloads: g.ToList()))
             .OrderByDescending(p => p.TotalHours)
             .ToList();
+
         var unassigned = tmpWorkloads.Where(w => w.Course == null || w.Course.Program == null).ToList();
         if (unassigned.Any())
         {
-            programTotals.Add(new ProgramHours
-            {
-                ProgramName = "Unassigned",
-                TotalHours = unassigned.Sum(w => w.Hours ?? 0),
-                Workloads = unassigned
-            });
+            programTotals.Add((ProgramName: "Unassigned",
+                               TotalHours: unassigned.Sum(w => w.Hours ?? 0),
+                               Workloads: unassigned));
         }
-    }
-    private class ProgramHours
-    {
-        public string ProgramName { get; set; } = "";
-        public int TotalHours { get; set; }
-        public List<Workload> Workloads { get; set; } = new();
     }
 }
