@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WorkloadProject2025.Migrations
 {
     /// <inheritdoc />
-    public partial class Test : Migration
+    public partial class test : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -298,8 +298,8 @@ namespace WorkloadProject2025.Migrations
                     FacultyEmail = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     CourseId = table.Column<int>(type: "int", nullable: false),
                     CourseType = table.Column<int>(type: "int", nullable: false),
-                    Section = table.Column<string>(type: "nvarchar(1)", nullable: false),
-                    Hours = table.Column<int>(type: "int", nullable: false)
+                    Section = table.Column<string>(type: "nvarchar(1)", maxLength: 1, nullable: false),
+                    Hours = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {

@@ -379,11 +379,12 @@ namespace WorkloadProject2025.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("Hours")
+                    b.Property<int?>("Hours")
                         .HasColumnType("int");
 
                     b.Property<string>("Section")
                         .IsRequired()
+                        .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
 
                     b.HasKey("Id");

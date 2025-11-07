@@ -6,6 +6,7 @@ using WorkloadProject2025.Components;
 using WorkloadProject2025.Components.Account;
 using WorkloadProject2025.Data;
 using WorkloadProject2025.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +22,7 @@ builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
-//This is important, you need to register an instance of your service otherwise you cant inject it
+// Application services (scoped)
 builder.Services.AddScoped<WorkloadService>();
 builder.Services.AddScoped<SchoolService>();
 builder.Services.AddScoped<DepartmentService>();
@@ -38,9 +39,19 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
+// read connection string from config
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+
+// IMPORTANT: register the DbContext with optionsLifetime = Singleton so IDbContextFactory (singleton) can consume options
+builder.Services.AddDbContext<ApplicationDbContext>(
+    options => options.UseSqlServer(connectionString),
+    contextLifetime: ServiceLifetime.Scoped,
+    optionsLifetime: ServiceLifetime.Singleton);
+
+// Register the factory so components & services can create short-lived contexts
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
+
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
@@ -60,13 +71,10 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-
-
 app.UseAntiforgery();
 
 app.MapStaticAssets();
