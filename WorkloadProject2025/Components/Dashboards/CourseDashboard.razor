@@ -56,29 +56,27 @@
 
                 <MudGrid Class="mt-3">
                     <MudItem Xs="12" Md="6">
-                        <MudText Typo="Typo.subtitle2">Course Details</MudText>
-                        <MudTable Dense="true" Hover="true" Items="@(new[] { currentCourse })">
-                            <HeaderContent>
-                                <MudTh>Property</MudTh>
-                                <MudTh>Value</MudTh>
-                            </HeaderContent>
-                            <RowTemplate Context="c">
-                                <MudTd DataLabel="Property">Course Name</MudTd>
-                                <MudTd DataLabel="Value">@c.CourseName</MudTd>
-                            </RowTemplate>
-                            <RowTemplate Context="c">
-                                <MudTd DataLabel="Property">Hours</MudTd>
-                                <MudTd DataLabel="Value">@c.Hours.ToString("0.##")</MudTd>
-                            </RowTemplate>
-                            <RowTemplate Context="c">
-                                <MudTd DataLabel="Property">Program</MudTd>
-                                <MudTd DataLabel="Value">@c.ProgramName</MudTd>
-                            </RowTemplate>
-                            <RowTemplate Context="c">
-                                <MudTd DataLabel="Property">Term</MudTd>
-                                <MudTd DataLabel="Value">@c.TermName</MudTd>
-                            </RowTemplate>
-                        </MudTable>
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Course Details</MudText>
+                        <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                            <MudStack Spacing="2">
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">Course Name</MudText>
+                                    <MudText Typo="Typo.body2">@currentCourse.CourseName</MudText>
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">Hours</MudText>
+                                    <MudText Typo="Typo.body2">@currentCourse.Hours.ToString("0.##")</MudText>
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">Program</MudText>
+                                    <MudText Typo="Typo.body2">@currentCourse.ProgramName</MudText>
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">Term</MudText>
+                                    <MudText Typo="Typo.body2">@currentCourse.TermName</MudText>
+                                </div>
+                            </MudStack>
+                        </MudPaper>
                     </MudItem>
 
                     <MudItem Xs="12" Md="6">
@@ -289,9 +287,7 @@
                 {
                     if (w.FacultyMember != null)
                     {
-                        var m = w.FacultyMember.GetType().GetProperty("Name")?.GetValue(w.FacultyMember) ??
-                                w.FacultyMember.GetType().GetProperty("FullName")?.GetValue(w.FacultyMember);
-                        return (m as string) ?? (w.FacultyEmail ?? "Unknown");
+                        return $"{w.FacultyMember.FirstName} {w.FacultyMember.LastName}".Trim();
                     }
                     return (w.FacultyEmail ?? "Unknown");
                 })
@@ -311,9 +307,7 @@
             // Build workload details
             workloadDetails = workloads.Select(w => new WorkloadDetail(
                 w.FacultyMember != null ? 
-                    (w.FacultyMember.GetType().GetProperty("Name")?.GetValue(w.FacultyMember) as string ??
-                     w.FacultyMember.GetType().GetProperty("FullName")?.GetValue(w.FacultyMember) as string ??
-                     w.FacultyEmail ?? "Unknown") :
+                    $"{w.FacultyMember.FirstName} {w.FacultyMember.LastName}".Trim() :
                     (w.FacultyEmail ?? "Unknown"),
                 w.Section ?? "",
                 w.CourseType.ToString(),
