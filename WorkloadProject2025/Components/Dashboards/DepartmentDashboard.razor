@@ -164,6 +164,7 @@
     private string[] departmentNames = Array.Empty<string>();
     private string? selectedDepartmentName;
     private bool isLoading = false;
+    private bool downloadJsRegistered = false;
 
     // presentation records
     private record ProgramTotal(string ProgramName, decimal TotalHours);
@@ -416,6 +417,11 @@
         }
 
         await EnsureBlazorDownloadJsAsync();
+        if (!downloadJsRegistered)
+        {
+            Snackbar.Add("Export unavailable: browser download helper not registered.", Severity.Error);
+            return;
+        }
 
         try
         {
@@ -459,33 +465,42 @@
 
     private async Task EnsureBlazorDownloadJsAsync()
     {
+        if (downloadJsRegistered) return;
+
         try
         {
+            // Check if the function exists
             var exists = await JS.InvokeAsync<bool>("(function(){return !!window.blazorDownloadFile;})");
             if (!exists)
             {
+                // Create the function dynamically
                 var js = @"
-(function(){
-  window.blazorDownloadFile = function (fileName, base64Data, contentType) {
-    try {
-      var link = document.createElement('a');
-      link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return true;
-    } catch (err) {
-      console.error('blazorDownloadFile runtime injection failed', err);
-      return false;
-    }
-  };
-})();
-";
+                window.blazorDownloadFile = function (fileName, base64Data, contentType) {
+                    try {
+                        var link = document.createElement('a');
+                        link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
+                        link.setAttribute('download', fileName);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        return true;
+                    } catch (err) {
+                        console.error('blazorDownloadFile runtime injection failed', err);
+                        return false;
+                    }
+                };
+            ";
+                // evaluate the script in the browser
                 await JS.InvokeVoidAsync("eval", js);
             }
+
+            downloadJsRegistered = true;
         }
-        catch { /* ignore */ }
+        catch
+        {
+            // ignore — if this fails the export will show a Snackbar error later
+            downloadJsRegistered = false;
+        }
     }
 
     private string TrimMessage(string s) => s?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? s;
