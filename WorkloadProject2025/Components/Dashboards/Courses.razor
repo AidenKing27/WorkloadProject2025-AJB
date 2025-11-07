@@ -1,0 +1,422 @@
+﻿@page "/coursedashboard"
+@using System
+@using System.Linq
+@using System.Collections.Generic
+@using System.Threading.Tasks
+@using System.Text
+@using Microsoft.JSInterop
+@using MudBlazor
+@using WorkloadProject2025.Data.Models
+
+@inject CourseService courseService
+@inject WorkloadService workloadService
+@inject ProgramOfStudyService programService
+@inject IDialogService dialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Course Dashboard</PageTitle>
+
+<MudCard Class="mx-auto mt-6" Style="max-width: 1200px;">
+    <MudCardHeader>
+        <MudText Typo="Typo.h5" Class="font-semibold">Course Dashboard</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExportSelectedCourseCsv" Disabled="@(string.IsNullOrEmpty(SelectedCourseName))">
+            Export Selected
+        </MudButton>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudGrid Class="mb-4" AlignItems="Center">
+            <MudItem Xs="12" Sm="6" Md="5">
+                <MudSelect T="string"
+                           Label="Select course"
+                           Placeholder="-- Select a course --"
+                           @bind-Value="SelectedCourseName"
+                           Dense="true"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    @foreach (var name in courseNames)
+                    {
+                        <MudSelectItem T="string" Value="@name">@name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem Xs="12" Sm="6" Md="7" Class="d-flex justify-end align-items-center">
+                <MudText Typo="Typo.caption" Class="me-4">Total Courses: @courseNames.Length</MudText>
+                <MudText Typo="Typo.caption">Total Hours: @totalCourseHours.ToString("0.##")</MudText>
+            </MudItem>
+        </MudGrid>
+
+        @if (!string.IsNullOrEmpty(selectedCourseName))
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6">@selectedCourseName</MudText>
+
+                <MudGrid Class="mt-3">
+                    <MudItem Xs="12" Md="6">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Course Details</MudText>
+                        <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                            <MudStack Spacing="2">
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">Course Name</MudText>
+                                    <MudText Typo="Typo.body2">@currentCourse.CourseName</MudText>
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">Hours</MudText>
+                                    <MudText Typo="Typo.body2">@currentCourse.Hours.ToString("0.##")</MudText>
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">Program</MudText>
+                                    <MudText Typo="Typo.body2">@currentCourse.ProgramName</MudText>
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">Term</MudText>
+                                    <MudText Typo="Typo.body2">@currentCourse.TermName</MudText>
+                                </div>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem Xs="12" Md="6">
+                        <MudText Typo="Typo.subtitle2">Faculty Teaching This Course</MudText>
+                        @if (facultyTotals != null && facultyTotals.Any())
+                        {
+                            <MudTable Dense="true" Hover="true" Items="facultyTotals">
+                                <HeaderContent>
+                                    <MudTh>Faculty</MudTh>
+                                    <MudTh Class="text-right">Workload Hours</MudTh>
+                                    <MudTh>Section</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="f">
+                                    <MudTd DataLabel="Faculty">@f.FacultyName</MudTd>
+                                    <MudTd DataLabel="Hours" Class="text-right">@f.Hours.ToString("0.##")</MudTd>
+                                    <MudTd DataLabel="Section">@f.Section</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="text-secondary">No faculty assigned to this course.</MudText>
+                        }
+                    </MudItem>
+                </MudGrid>
+
+                @* Faculty distribution chart *@
+                <div class="mt-4">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Faculty Workload Distribution</MudText>
+                    @if (facultyData != null && facultyData.Any() && facultyData.Any(x => x > 0))
+                    {
+                        <MudChart ChartType="ChartType.Pie" Width="100%" Height="360px" InputData="facultyData.ToArray()" InputLabels="facultyLabels" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="text-secondary">No faculty workload data available for this course.</MudText>
+                    }
+                </div>
+
+                @* Workload details table *@
+                <MudGrid Class="mt-4">
+                    <MudItem Xs="12" Md="12">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Workload Details</MudText>
+                        @if (workloadDetails != null && workloadDetails.Any())
+                        {
+                            <MudTable Dense="true" Hover="true" Items="workloadDetails">
+                                <HeaderContent>
+                                    <MudTh>Faculty</MudTh>
+                                    <MudTh>Section</MudTh>
+                                    <MudTh>Course Type</MudTh>
+                                    <MudTh Class="text-right">Hours</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="w">
+                                    <MudTd DataLabel="Faculty">@w.FacultyName</MudTd>
+                                    <MudTd DataLabel="Section">@w.Section</MudTd>
+                                    <MudTd DataLabel="Type">@w.CourseType</MudTd>
+                                    <MudTd DataLabel="Hours" Class="text-right">@w.Hours.ToString("0.##")</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="text-secondary">No workload details available for this course.</MudText>
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="text-secondary">Select a course to view details.</MudText>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private string[] courseNames = Array.Empty<string>();
+    private string? selectedCourseName;
+    private bool isLoading = false;
+    private decimal totalCourseHours = 0M;
+
+    // presentation records
+    private record CourseDetail(string CourseName, decimal Hours, string ProgramName, string TermName);
+    private record FacultyTotal(string FacultyName, decimal Hours, string Section);
+    private record WorkloadDetail(string FacultyName, string Section, string CourseType, decimal Hours);
+
+    private CourseDetail currentCourse = new("", 0M, "", "");
+    private List<FacultyTotal> facultyTotals = new();
+    private List<WorkloadDetail> workloadDetails = new();
+    private List<double> facultyData = new();
+    private string[] facultyLabels = Array.Empty<string>();
+
+    private string SelectedCourseName
+    {
+        get => selectedCourseName ?? string.Empty;
+        set
+        {
+            if (selectedCourseName == value) return;
+            selectedCourseName = string.IsNullOrWhiteSpace(value) ? null : value;
+            _ = InvokeAsync(() => LoadSelectedCourseByNameAsync(selectedCourseName));
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCourseNamesAsync();
+        if (courseNames.Any())
+            SelectedCourseName = courseNames.First();
+    }
+
+    private async Task LoadCourseNamesAsync()
+    {
+        try
+        {
+            var courses = await courseService.GetAllAsync();
+            courseNames = courses
+                .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+                .Select(c => c.Name.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            // Calculate total course hours
+            totalCourseHours = courses.Sum(c => c.Hours ?? 0);
+        }
+        catch (Exception ex)
+        {
+            courseNames = Array.Empty<string>();
+            totalCourseHours = 0M;
+            Snackbar.Add($"Failed to load courses: {TrimMessage(ex.Message)}", Severity.Error);
+        }
+    }
+
+    private async Task LoadSelectedCourseByNameAsync(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            currentCourse = new("", 0M, "", "");
+            facultyTotals.Clear();
+            workloadDetails.Clear();
+            facultyData.Clear();
+            facultyLabels = Array.Empty<string>();
+            StateHasChanged();
+            return;
+        }
+
+        if (isLoading) return;
+        isLoading = true;
+
+        try
+        {
+            // Load all courses with this name
+            var courses = await courseService.GetAllAsync();
+            var course = courses.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+            if (course == null)
+            {
+                Snackbar.Add("Course not found", Severity.Warning);
+                return;
+            }
+
+            // Load workloads for this course
+            List<Workload> workloads;
+            try
+            {
+                var allWorkloads = await workloadService.GetAllAsync();
+                workloads = allWorkloads.Where(w => w.CourseId == course.Id).ToList();
+            }
+            catch
+            {
+                workloads = new List<Workload>();
+            }
+
+            // Get program name
+            string programName = "Unknown";
+            string termName = "Unknown";
+            try
+            {
+                if (course.Program != null)
+                {
+                    programName = course.Program.Name ?? "Unknown";
+                }
+                else if (course.ProgramId.HasValue)
+                {
+                    var programs = await programService.GetAllAsync();
+                    var program = programs.FirstOrDefault(p => p.Id == course.ProgramId.Value);
+                    programName = program?.Name ?? "Unknown";
+                }
+
+                if (course.Term != null)
+                {
+                    termName = course.Term.Name ?? "Unknown";
+                }
+            }
+            catch { }
+
+            // Set course details
+            currentCourse = new CourseDetail(
+                course.Name ?? "Unknown",
+                course.Hours ?? 0M,
+                programName,
+                termName
+            );
+
+            // Build faculty totals
+            var facultyGroups = workloads
+                .GroupBy(w =>
+                {
+                    if (w.FacultyMember != null)
+                    {
+                        return $"{w.FacultyMember.FirstName} {w.FacultyMember.LastName}".Trim();
+                    }
+                    return (w.FacultyEmail ?? "Unknown");
+                })
+                .Select(g => new
+                {
+                    FacultyName = g.Key,
+                    TotalHours = g.Sum(x => (x.Hours ?? 0)),
+                    Section = string.Join(", ", g.Select(x => x.Section ?? "").Where(s => !string.IsNullOrWhiteSpace(s)).Distinct())
+                })
+                .OrderByDescending(x => x.TotalHours)
+                .ToList();
+
+            facultyTotals = facultyGroups.Select(f => new FacultyTotal(f.FacultyName, f.TotalHours, f.Section)).ToList();
+            facultyLabels = facultyTotals.Select(f => f.FacultyName).ToArray();
+            facultyData = facultyTotals.Select(f => (double)f.Hours).ToList();
+
+            // Build workload details
+            workloadDetails = workloads.Select(w => new WorkloadDetail(
+                w.FacultyMember != null ? 
+                    $"{w.FacultyMember.FirstName} {w.FacultyMember.LastName}".Trim() :
+                    (w.FacultyEmail ?? "Unknown"),
+                w.Section ?? "",
+                w.CourseType.ToString(),
+                w.Hours ?? 0M
+            )).OrderBy(w => w.FacultyName).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load course details: {TrimMessage(ex.Message)}", Severity.Error);
+            currentCourse = new("", 0M, "", "");
+            facultyTotals = new List<FacultyTotal>();
+            workloadDetails = new List<WorkloadDetail>();
+            facultyData.Clear();
+            facultyLabels = Array.Empty<string>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExportSelectedCourseCsv()
+    {
+        if (string.IsNullOrEmpty(SelectedCourseName))
+        {
+            Snackbar.Add("Select a course first", Severity.Warning);
+            return;
+        }
+
+        await EnsureBlazorDownloadJsAsync();
+
+        try
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"\"Course: {SelectedCourseName}\"");
+            sb.AppendLine($"\"Exported\",\"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\"");
+            sb.AppendLine();
+            sb.AppendLine("\"Property\",\"Value\"");
+            sb.AppendLine($"\"Course Name\",\"{currentCourse.CourseName}\"");
+            sb.AppendLine($"\"Hours\",{currentCourse.Hours}");
+            sb.AppendLine($"\"Program\",\"{currentCourse.ProgramName}\"");
+            sb.AppendLine($"\"Term\",\"{currentCourse.TermName}\"");
+
+            sb.AppendLine();
+            sb.AppendLine("\"Faculty\",\"Workload Hours\",\"Section\"");
+            foreach (var f in facultyTotals)
+            {
+                var safeName = (f.FacultyName ?? "").Replace("\"", "\"\"");
+                var safeSection = (f.Section ?? "").Replace("\"", "\"\"");
+                sb.AppendLine($"\"{safeName}\",{f.Hours},\"{safeSection}\"");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("\"Faculty\",\"Section\",\"Course Type\",\"Hours\"");
+            foreach (var w in workloadDetails)
+            {
+                var safeName = (w.FacultyName ?? "").Replace("\"", "\"\"");
+                var safeSection = (w.Section ?? "").Replace("\"", "\"\"");
+                var safeType = (w.CourseType ?? "").Replace("\"", "\"\"");
+                sb.AppendLine($"\"{safeName}\",\"{safeSection}\",\"{safeType}\",{w.Hours}");
+            }
+
+            var csvBytes = Encoding.UTF8.GetBytes(sb.ToString());
+            var bom = new byte[] { 0xEF, 0xBB, 0xBF };
+            var withBom = new byte[bom.Length + csvBytes.Length];
+            Buffer.BlockCopy(bom, 0, withBom, 0, bom.Length);
+            Buffer.BlockCopy(csvBytes, 0, withBom, bom.Length, csvBytes.Length);
+            var base64 = Convert.ToBase64String(withBom);
+            var fileName = $"course-{SelectedCourseName}-{DateTime.Now:yyyyMMddHHmmss}.csv";
+            await JS.InvokeVoidAsync("blazorDownloadFile", fileName, base64, "text/csv;charset=utf-8;");
+            Snackbar.Add("Course CSV exported", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Export failed: {TrimMessage(ex.Message)}", Severity.Error);
+        }
+    }
+
+    private async Task EnsureBlazorDownloadJsAsync()
+    {
+        try
+        {
+            var exists = await JS.InvokeAsync<bool>("(function(){return !!window.blazorDownloadFile;})");
+            if (!exists)
+            {
+                var js = @"
+(function(){
+  window.blazorDownloadFile = function (fileName, base64Data, contentType) {
+    try {
+      var link = document.createElement('a');
+      link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return true;
+    } catch (err) {
+      console.error('blazorDownloadFile runtime injection failed', err);
+      return false;
+    }
+  };
+})();
+";
+                await JS.InvokeVoidAsync("eval", js);
+            }
+        }
+        catch { /* ignore */ }
+    }
+
+    private string TrimMessage(string s) => s?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? s;
+}

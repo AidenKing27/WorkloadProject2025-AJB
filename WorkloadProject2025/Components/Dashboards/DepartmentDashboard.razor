@@ -56,29 +56,43 @@
                 <MudGrid Class="mt-3">
                     <MudItem Xs="12" Md="6">
                         <MudText Typo="Typo.subtitle2">Programs (Total hours)</MudText>
+
                         <MudTable Dense="true" Hover="true" Items="programTotals">
                             <HeaderContent>
                                 <MudTh>Program</MudTh>
                                 <MudTh Class="text-right">Program Hours</MudTh>
                             </HeaderContent>
+
                             <RowTemplate Context="p">
                                 <MudTd DataLabel="Program">@p.ProgramName</MudTd>
                                 <MudTd DataLabel="Hours" Class="text-right">@p.TotalHours.ToString("0.##")</MudTd>
                             </RowTemplate>
+
+                            <FooterContent>
+                                <MudTd><b>Total</b></MudTd>
+                                <MudTd Class="text-right"><b>@(programTotals?.Sum(x => x.TotalHours).ToString("0.##") ?? "0")</b></MudTd>
+                            </FooterContent>
                         </MudTable>
                     </MudItem>
 
                     <MudItem Xs="12" Md="6">
                         <MudText Typo="Typo.subtitle2">Courses (Total hours)</MudText>
+
                         <MudTable Dense="true" Hover="true" Items="courseTotals">
                             <HeaderContent>
                                 <MudTh>Course</MudTh>
                                 <MudTh Class="text-right">Course Hours</MudTh>
                             </HeaderContent>
+
                             <RowTemplate Context="c">
                                 <MudTd DataLabel="Course">@c.CourseName</MudTd>
                                 <MudTd DataLabel="Hours" Class="text-right">@c.TotalHours.ToString("0.##")</MudTd>
                             </RowTemplate>
+
+                            <FooterContent>
+                                <MudTd><b>Total</b></MudTd>
+                                <MudTd Class="text-right"><b>@(courseTotals?.Sum(x => x.TotalHours).ToString("0.##") ?? "0")</b></MudTd>
+                            </FooterContent>
                         </MudTable>
                     </MudItem>
                 </MudGrid>
@@ -143,6 +157,11 @@
                                     <MudTd DataLabel="Hours" Class="text-right">@f.TotalHours.ToString("0.##")</MudTd>
                                     <MudTd DataLabel="Courses">@string.Join(", ", f.Courses)</MudTd>
                                 </RowTemplate>
+                                <FooterContent>
+                                    <MudTd><b>Total</b></MudTd>
+                                    <MudTd Class="text-right"><b>@(facultyTotals?.Sum(x => x.TotalHours).ToString("0.##") ?? "0")</b></MudTd>
+                                    <MudTd></MudTd>
+                                </FooterContent>
                             </MudTable>
                         }
                         else
@@ -164,7 +183,7 @@
     private string[] departmentNames = Array.Empty<string>();
     private string? selectedDepartmentName;
     private bool isLoading = false;
-
+    private bool downloadJsRegistered = false;
     // presentation records
     private record ProgramTotal(string ProgramName, decimal TotalHours);
     private record CourseTotal(string CourseName, decimal TotalHours);
@@ -383,6 +402,34 @@
                 .ToList();
 
             facultyTotals = facultyGroups.Select(f => new FacultyTotal(f.FacultyName, f.TotalHours, f.Courses)).ToList();
+
+            // Add "Unassigned" row for courses that have no workload rows (use Course.Hours)
+            var coursesWithWorkloadIds = workloads.Where(w => w.CourseId.HasValue).Select(w => w.CourseId!.Value).ToHashSet();
+            var unassignedCourses = allCourses.Where(c => !coursesWithWorkloadIds.Contains(c.Id)).ToList();
+
+            if (unassignedCourses.Any())
+            {
+                var unassignedNames = unassignedCourses.Select(c => c.Name ?? $"Course {c.Id}").ToList();
+                decimal unassignedHours = 0M;
+                foreach (var uc in unassignedCourses)
+                {
+                    try
+                    {
+                        var hv = uc.GetType().GetProperty("Hours")?.GetValue(uc);
+                        if (hv is int hi) unassignedHours += hi;
+                        else if (hv is decimal hd) unassignedHours += hd;
+                        else if (hv is double hdbl) unassignedHours += (decimal)hdbl;
+                    }
+                    catch { /* ignore conversion errors */ }
+                }
+
+                // Only add if there's at least some hours or no facultyTotals present
+                if (unassignedHours > 0 || !facultyTotals.Any())
+                {
+                    facultyTotals.Insert(0, new FacultyTotal("Unassigned", unassignedHours, unassignedNames));
+                }
+            }
+
             facultyLabels = facultyTotals.Select(f => f.FacultyName).ToArray();
             facultyData = facultyTotals.Select(f => (double)f.TotalHours).ToList();
         }
@@ -406,7 +453,7 @@
         }
     }
 
-    // Export selected department (similar to school page) -- unchanged, but you can include faculty section if you want
+    // Export selected department (similar to school page) -- unchanged, but includes faculty section now
     private async Task ExportSelectedDepartmentCsv()
     {
         if (string.IsNullOrEmpty(SelectedDepartmentName))
@@ -416,6 +463,11 @@
         }
 
         await EnsureBlazorDownloadJsAsync();
+        if (!downloadJsRegistered)
+        {
+            Snackbar.Add("Export unavailable: browser download helper not registered.", Severity.Error);
+            return;
+        }
 
         try
         {
@@ -459,33 +511,39 @@
 
     private async Task EnsureBlazorDownloadJsAsync()
     {
+        if (downloadJsRegistered) return;
+
         try
         {
             var exists = await JS.InvokeAsync<bool>("(function(){return !!window.blazorDownloadFile;})");
             if (!exists)
             {
                 var js = @"
-(function(){
-  window.blazorDownloadFile = function (fileName, base64Data, contentType) {
-    try {
-      var link = document.createElement('a');
-      link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return true;
-    } catch (err) {
-      console.error('blazorDownloadFile runtime injection failed', err);
-      return false;
-    }
-  };
-})();
-";
+ window.blazorDownloadFile = function (fileName, base64Data, contentType) {
+                    try {
+                        var link = document.createElement('a');
+                        link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
+                        link.setAttribute('download', fileName);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        return true;
+                    } catch (err) {
+                        console.error('blazorDownloadFile runtime injection failed', err);
+                        return false;
+                    }
+                };
+            ";
                 await JS.InvokeVoidAsync("eval", js);
             }
+            downloadJsRegistered = true;
         }
-        catch { /* ignore */ }
+        catch
+        {
+            // ignore — if this fails the export will show a Snackbar error later
+            downloadJsRegistered = false;
+        }
+        
     }
 
     private string TrimMessage(string s) => s?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? s;
