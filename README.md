@@ -5,7 +5,7 @@ MAKE YOUR CHANGES ON THE SEPARATE BRANCH WITH YOUR NAME
 # Objectives:
 - [ ] Normalize all pages to use same UI design patterns (Aiden)
 
-- [ ] Remove hard coded data from prototype pages and replace with actual database values (School, Department, Program) (Balkaran)
+- [x] Remove hard coded data from prototype pages and replace with actual database values (School, Department, Program) (Balkaran)
 
 - [ ] Flesh out the Workload Dashboard and remove fake data (Aiden)
 
