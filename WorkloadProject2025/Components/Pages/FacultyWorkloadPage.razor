@@ -83,7 +83,26 @@
                 </Columns>
             </MudDataGrid>
         </MudStack>
-
+        @if (programTotals?.Any() == true)
+        {
+            @foreach (var p in programTotals)
+            {
+                <MudCardContent Class="py-1">
+                    <MudGrid>
+                        <MudItem xs="8">
+                            <MudText>@p.ProgramName</MudText>
+                        </MudItem>
+                        <MudItem xs="4" Class="d-flex justify-end">
+                            <MudText Typo="Typo.h6" Class="font-semibold">@p.TotalHours Hours</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            }
+        }
+        else
+        {
+            <MudText>No program hours to display.</MudText>
+        }
         <MudCardContent Class="d-flex justify-end pb-0">
             <MudText Typo="Typo.h6" Class="font-semibold">Total: @totalHours Hours </MudText>
         </MudCardContent>
@@ -104,7 +123,7 @@
     private List<Faculty> faculty = new List<Faculty>();
 
     int? totalHours;
-
+    private List<ProgramHours> programTotals = new();
     protected override async Task OnInitializedAsync()
     {
         workloads = await workloadService.GetAllAsync();
@@ -133,7 +152,37 @@
         {
             totalHours += w.Hours;
         }
-
+        BuildProgramTotals();
         StateHasChanged();
+    }
+    private void BuildProgramTotals()
+    {
+        programTotals = tmpWorkloads
+            .Where(w => w.Course != null && w.Course.Program != null)
+            .GroupBy(w => w.Course.Program.Name)
+            .Select(g => new ProgramHours
+            {
+                ProgramName = g.Key,
+                TotalHours = g.Sum(x => x.Hours ?? 0),
+                Workloads = g.ToList()
+            })
+            .OrderByDescending(p => p.TotalHours)
+            .ToList();
+        var unassigned = tmpWorkloads.Where(w => w.Course == null || w.Course.Program == null).ToList();
+        if (unassigned.Any())
+        {
+            programTotals.Add(new ProgramHours
+            {
+                ProgramName = "Unassigned",
+                TotalHours = unassigned.Sum(w => w.Hours ?? 0),
+                Workloads = unassigned
+            });
+        }
+    }
+    private class ProgramHours
+    {
+        public string ProgramName { get; set; } = "";
+        public int TotalHours { get; set; }
+        public List<Workload> Workloads { get; set; } = new();
     }
 }

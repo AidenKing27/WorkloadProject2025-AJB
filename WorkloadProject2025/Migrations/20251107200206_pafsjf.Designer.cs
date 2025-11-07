@@ -12,8 +12,8 @@ using WorkloadProject2025.Data;
 namespace WorkloadProject2025.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251024200827_Test")]
-    partial class Test
+    [Migration("20251107200206_pafsjf")]
+    partial class pafsjf
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -284,6 +284,9 @@ namespace WorkloadProject2025.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsFullTime")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -382,11 +385,12 @@ namespace WorkloadProject2025.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("Hours")
+                    b.Property<int?>("Hours")
                         .HasColumnType("int");
 
                     b.Property<string>("Section")
                         .IsRequired()
+                        .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
 
                     b.HasKey("Id");

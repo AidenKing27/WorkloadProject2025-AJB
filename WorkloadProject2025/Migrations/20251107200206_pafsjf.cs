@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WorkloadProject2025.Migrations
 {
     /// <inheritdoc />
-    public partial class Test : Migration
+    public partial class pafsjf : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -228,7 +228,8 @@ namespace WorkloadProject2025.Migrations
                     FirstName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     LastName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    WorkloadCategoryId = table.Column<int>(type: "int", nullable: false)
+                    WorkloadCategoryId = table.Column<int>(type: "int", nullable: false),
+                    IsFullTime = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -298,8 +299,8 @@ namespace WorkloadProject2025.Migrations
                     FacultyEmail = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     CourseId = table.Column<int>(type: "int", nullable: false),
                     CourseType = table.Column<int>(type: "int", nullable: false),
-                    Section = table.Column<string>(type: "nvarchar(1)", nullable: false),
-                    Hours = table.Column<int>(type: "int", nullable: false)
+                    Section = table.Column<string>(type: "nvarchar(1)", maxLength: 1, nullable: false),
+                    Hours = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
