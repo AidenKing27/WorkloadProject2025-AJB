@@ -184,6 +184,7 @@
     private string? selectedDepartmentName;
     private bool isLoading = false;
     private bool downloadJsRegistered = false;
+
     // presentation records
     private record ProgramTotal(string ProgramName, decimal TotalHours);
     private record CourseTotal(string CourseName, decimal TotalHours);
@@ -453,7 +454,14 @@
         }
     }
 
-    // Export selected department (similar to school page) -- unchanged, but includes faculty section now
+    private static string SanitizeFileName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "export";
+        var invalids = System.IO.Path.GetInvalidFileNameChars();
+        var cleaned = string.Concat(name.Where(ch => !invalids.Contains(ch)));
+        return cleaned.Replace(' ', '-');
+    }
+
     private async Task ExportSelectedDepartmentCsv()
     {
         if (string.IsNullOrEmpty(SelectedDepartmentName))
@@ -462,12 +470,9 @@
             return;
         }
 
+        // If you included wwwroot/js/blazorDownloadFile.js and referenced it in index.html/_Host, this Ensure is optional.
+        // It is harmless to call and will only attempt to eval if the helper is missing.
         await EnsureBlazorDownloadJsAsync();
-        if (!downloadJsRegistered)
-        {
-            Snackbar.Add("Export unavailable: browser download helper not registered.", Severity.Error);
-            return;
-        }
 
         try
         {
@@ -475,6 +480,7 @@
             sb.AppendLine($"\"Department: {SelectedDepartmentName}\"");
             sb.AppendLine($"\"Exported\",\"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\"");
             sb.AppendLine();
+
             sb.AppendLine("\"Program\",\"ProgramHours\"");
             foreach (var p in programTotals)
                 sb.AppendLine($"\"{p.ProgramName}\",{p.TotalHours}");
@@ -493,13 +499,19 @@
                 sb.AppendLine($"\"{safeName}\",{f.TotalHours},\"{courses}\"");
             }
 
-            var csvBytes = Encoding.UTF8.GetBytes(sb.ToString());
+            var csvText = sb.ToString();
+
+            // add BOM and base64
+            var csvBytes = Encoding.UTF8.GetBytes(csvText);
             var bom = new byte[] { 0xEF, 0xBB, 0xBF };
             var withBom = new byte[bom.Length + csvBytes.Length];
             Buffer.BlockCopy(bom, 0, withBom, 0, bom.Length);
             Buffer.BlockCopy(csvBytes, 0, withBom, bom.Length, csvBytes.Length);
             var base64 = Convert.ToBase64String(withBom);
-            var fileName = $"department-{SelectedDepartmentName}-{DateTime.Now:yyyyMMddHHmmss}.csv";
+
+            var fileName = $"department-{SanitizeFileName(SelectedDepartmentName)}-{DateTime.Now:yyyyMMddHHmmss}.csv";
+
+            // call the global helper included in wwwroot/js/blazorDownloadFile.js (or eval-injected one)
             await JS.InvokeVoidAsync("blazorDownloadFile", fileName, base64, "text/csv;charset=utf-8;");
             Snackbar.Add("Department CSV exported", Severity.Success);
         }
@@ -519,31 +531,32 @@
             if (!exists)
             {
                 var js = @"
- window.blazorDownloadFile = function (fileName, base64Data, contentType) {
-                    try {
-                        var link = document.createElement('a');
-                        link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
-                        link.setAttribute('download', fileName);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        return true;
-                    } catch (err) {
-                        console.error('blazorDownloadFile runtime injection failed', err);
-                        return false;
-                    }
-                };
-            ";
+(function(){
+  window.blazorDownloadFile = function (fileName, base64Data, contentType) {
+    try {
+      var link = document.createElement('a');
+      link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return true;
+    } catch (err) {
+      console.error('blazorDownloadFile runtime injection failed', err);
+      return false;
+    }
+  };
+})();
+";
                 await JS.InvokeVoidAsync("eval", js);
             }
             downloadJsRegistered = true;
         }
         catch
         {
-            // ignore — if this fails the export will show a Snackbar error later
+            // ignore — export method will provide user feedback if it fails
             downloadJsRegistered = false;
         }
-        
     }
 
     private string TrimMessage(string s) => s?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? s;

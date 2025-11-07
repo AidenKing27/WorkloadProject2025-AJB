@@ -4,6 +4,7 @@
 @using System.Collections.Generic
 @using System.Threading.Tasks
 @using System.Text
+@using Microsoft.AspNetCore.Components.Web
 @using WorkloadProject2025.Data.Models
 @using MudBlazor
 
@@ -151,7 +152,7 @@
             <MudList T="int" Dense="true">
                 @foreach (var s in schools)
                 {
-                    <MudListItem T="int" Value="@s.Id" OnClick="@(async () => await SelectFromList(s.Id))">
+                    <MudListItem T="int" Value="@s.Id" @onclick="@(async (MouseEventArgs __e) => await SelectFromList(s.Id))">
                         @s.Name
                         <MudText Class="ml-2" Typo="Typo.caption">(@(s.Departments?.Count ?? 0) departments)</MudText>
                     </MudListItem>
@@ -185,7 +186,6 @@
 
     // Chart state (departments)
     private int Index = -1;
-    // property used for binding so we can react to changes
     private int SelectedIndex
     {
         get => Index;
@@ -209,45 +209,121 @@
     // totals and behavior
     private decimal totalDeptHours = 0M;
     private bool hideZeroDepartments = true;
+
+    // presentation records
+    private record DepartmentTotalDto(int DepartmentId, string DepartmentName, decimal TotalHours);
+    private record ProgramTotalDto(int ProgramId, string ProgramName, decimal TotalHours);
+    // (You already have schoolService DTOs like these; use them if available)
+
+    // helpers
+    private static string SanitizeFileName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "export";
+        var invalids = System.IO.Path.GetInvalidFileNameChars();
+        var cleaned = string.Concat(name.Where(ch => !invalids.Contains(ch)));
+        return cleaned.Replace(' ', '-');
+    }
+
+    private string TrimMessage(string s) => s?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? s;
+
+    // Ensure global helper exists (if you already include wwwroot/js/blazorDownloadFile.js in index.html/_Host this is optional)
     private async Task EnsureBlazorDownloadJsAsync()
     {
-        if (downloadJsRegistered) return;
-
         try
         {
-            // Check if the function exists
             var exists = await JS.InvokeAsync<bool>("(function(){return !!window.blazorDownloadFile;})");
             if (!exists)
             {
-                // Create the function dynamically
                 var js = @"
-                window.blazorDownloadFile = function (fileName, base64Data, contentType) {
-                    try {
-                        var link = document.createElement('a');
-                        link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
-                        link.setAttribute('download', fileName);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        return true;
-                    } catch (err) {
-                        console.error('blazorDownloadFile runtime injection failed', err);
-                        return false;
-                    }
-                };
-            ";
-                // evaluate the script in the browser
+(function(){
+  window.blazorDownloadFile = function (fileName, base64Data, contentType) {
+    try {
+      var link = document.createElement('a');
+      link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return true;
+    } catch (err) {
+      console.error('blazorDownloadFile runtime injection failed', err);
+      return false;
+    }
+  };
+})();
+";
                 await JS.InvokeVoidAsync("eval", js);
             }
-
+            // mark registered so callers that check the flag can proceed
             downloadJsRegistered = true;
         }
         catch
         {
-            // ignore — if this fails the export will show a Snackbar error later
             downloadJsRegistered = false;
         }
     }
+
+    private async Task ExportSelectedSchoolCsv()
+    {
+        if (selectedSchool == null)
+        {
+            Snackbar.Add("No school selected", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Build CSV (same logic as before)
+            var deptTotals = await schoolService.GetDepartmentTotalsAsync(selectedSchool.Id);
+            var deptTotalsLookup = deptTotals.ToDictionary(x => x.DepartmentId, x => x.TotalHours);
+
+            var visibleDepartments = (selectedSchool?.Departments ?? Enumerable.Empty<Department>())
+                .Where(d => string.IsNullOrWhiteSpace(searchTerm) || d.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .Where(d => !hideZeroDepartments || (deptTotalsLookup.TryGetValue(d.Id, out var t) && t > 0))
+                .ToList();
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"\"School: {selectedSchool.Name}\"");
+            sb.AppendLine($"\"Exported\",\"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\"");
+            sb.AppendLine();
+            sb.AppendLine("\"Department\",\"ProgramsCount\",\"DeptTotalHours\"");
+
+            foreach (var d in visibleDepartments)
+            {
+                var progCount = d.ProgramsOfStudy?.Count ?? 0;
+                var deptTotal = deptTotalsLookup.TryGetValue(d.Id, out var tot) ? tot : 0M;
+                var safeName = (d.Name ?? string.Empty).Replace("\"", "\"\"");
+                sb.AppendLine($"\"{safeName}\",{progCount},{deptTotal}");
+            }
+
+            // optional program breakdown (same as before)...
+            // (keep the existing SelectedIndex logic if you want to include it)
+
+            // Prepare bytes with BOM and base64
+            var csvText = sb.ToString();
+            var csvBytes = Encoding.UTF8.GetBytes(csvText);
+            var bom = new byte[] { 0xEF, 0xBB, 0xBF };
+            var withBom = new byte[bom.Length + csvBytes.Length];
+            Buffer.BlockCopy(bom, 0, withBom, 0, bom.Length);
+            Buffer.BlockCopy(csvBytes, 0, withBom, bom.Length, csvBytes.Length);
+            var base64 = Convert.ToBase64String(withBom);
+            var fileName = $"school-{selectedSchool.Id}-{DateTime.Now:yyyyMMddHHmmss}.csv";
+
+            // Call the global helper you added to index.html/_Host.cshtml
+            await JS.InvokeVoidAsync("blazorDownloadFile", fileName, base64, "text/csv;charset=utf-8;");
+            Snackbar.Add($"CSV prepared: {fileName}", Severity.Success);
+        }
+        catch (JSException jsEx)
+        {
+            // if JS interop fails, show a meaningful message
+            Snackbar.Add($"Export failed (JS): {TrimMessage(jsEx.Message)}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Export failed: {TrimMessage(ex.Message)}", Severity.Error);
+        }
+    }
+
     // map of departmentId -> computed total hours (used by table and chart)
     private Dictionary<int, decimal> deptTotalsMap = new Dictionary<int, decimal>();
 
@@ -273,6 +349,7 @@
             schools = new List<School>();
         }
     }
+
     private void ComputeTotalsFromSelectedSchool()
     {
         deptTotalsMap.Clear();
@@ -284,7 +361,6 @@
         {
             decimal deptTotal = 0M;
 
-            // If Department has a TotalCourseHours property mapped and populated, prefer it
             try
             {
                 var deptProp = d.GetType().GetProperty("TotalCourseHours");
@@ -296,14 +372,12 @@
                     if (v is int i) { deptTotal = i; deptTotalsMap[d.Id] = deptTotal; continue; }
                 }
             }
-            catch { /* ignore and fall back */ }
+            catch { }
 
-            // Otherwise sum program totals or program.Courses hours
             if (d.ProgramsOfStudy != null && d.ProgramsOfStudy.Any())
             {
                 foreach (var p in d.ProgramsOfStudy)
                 {
-                    // prefer Program.TotalCourseHours if present
                     try
                     {
                         var pprop = p.GetType().GetProperty("TotalCourseHours");
@@ -315,9 +389,8 @@
                             if (pv is int pi) { deptTotal += pi; continue; }
                         }
                     }
-                    catch { /* ignore */ }
+                    catch { }
 
-                    // else sum program.Courses if present
                     try
                     {
                         var courses = (p.GetType().GetProperty("Courses")?.GetValue(p) as IEnumerable<object>);
@@ -336,14 +409,13 @@
                             }
                         }
                     }
-                    catch { /* if not present, ignore */ }
+                    catch { }
                 }
             }
 
             deptTotalsMap[d.Id] = deptTotal;
         }
 
-        // rebuild labels/dataList/visibleDeptIds from deptTotalsMap (apply hideZeroDepartments)
         var deptPairs = selectedSchool.Departments
             .Select(d => new { Dept = d, Hours = deptTotalsMap.TryGetValue(d.Id, out var h) ? h : 0M })
             .Where(x => !hideZeroDepartments || x.Hours > 0)
@@ -355,6 +427,7 @@
         visibleDeptIds = deptPairs.Select(x => x.Dept.Id).ToList();
         totalDeptHours = deptTotalsMap.Values.Sum();
     }
+
     private async Task LoadSelectedSchoolAsync(int id)
     {
         try
@@ -375,32 +448,23 @@
                 return;
             }
 
-            // load school entity for display
             selectedSchool = await schoolService.GetByIdAsync(id) ?? schools.FirstOrDefault(s => s.Id == id);
 
-            // ensure nested lists exist so table renders without null refs
             if (selectedSchool?.Departments != null)
             {
                 foreach (var d in selectedSchool.Departments)
                     d.ProgramsOfStudy = d.ProgramsOfStudy ?? new List<ProgramOfStudy>();
             }
 
-            // compute totals server-side from Courses -> Programs -> Departments
             var deptTotals = await schoolService.GetDepartmentTotalsAsync(id);
-
-            // populate map used by table rendering
             deptTotalsMap = deptTotals.ToDictionary(x => x.DepartmentId, x => x.TotalHours);
-
-            // overall total (school total)
             totalDeptHours = deptTotals.Sum(d => d.TotalHours);
 
-            // prepare chart arrays (apply hide-zero toggle)
             var visible = deptTotals.Where(d => !hideZeroDepartments || d.TotalHours > 0).ToList();
             labels = visible.Select(d => d.DepartmentName ?? "Unknown").ToArray();
             dataList = visible.Select(d => (double)d.TotalHours).ToList();
             visibleDeptIds = visible.Select(d => d.DepartmentId).ToList();
 
-            // reset program chart selection
             programData = new List<double>();
             programLabels = Array.Empty<string>();
             selectedDepartmentName = null;
@@ -427,12 +491,10 @@
         StateHasChanged();
     }
 
-    // called when user clicks/selects a donut slice (department)
     private async Task OnDepartmentSliceSelectedAsync()
     {
         try
         {
-            // if selection is invalid or no visible ids, clear program chart
             if (SelectedIndex < 0 || SelectedIndex >= visibleDeptIds.Count)
             {
                 programData = new List<double>();
@@ -443,14 +505,9 @@
             }
 
             var deptId = visibleDeptIds[SelectedIndex];
-
-            // fetch program totals for the selected department
             var programs = await schoolService.GetProgramTotalsByDepartmentAsync(deptId);
 
-            selectedDepartmentName = programs.FirstOrDefault()?.ProgramName != null
-                ? (selectedSchool?.Departments?.FirstOrDefault(d => d.Id == deptId)?.Name ?? "Unknown")
-                : (selectedSchool?.Departments?.FirstOrDefault(d => d.Id == deptId)?.Name ?? "Unknown");
-
+            selectedDepartmentName = selectedSchool?.Departments?.FirstOrDefault(d => d.Id == deptId)?.Name ?? "Unknown";
             programLabels = programs.Select(p => p.ProgramName ?? "Unknown").ToArray();
             programData = programs.Select(p => (double)p.TotalHours).ToList();
 
@@ -469,7 +526,6 @@
     private async Task SelectFromList(int id)
     {
         SelectedSchoolId = id;
-        // setter triggers LoadSelectedSchoolAsync
     }
 
     public async Task ReloadData()
@@ -511,114 +567,6 @@
         await Task.CompletedTask;
     }
 
-    private async Task ExportSelectedSchoolCsv()
-    {
-        if (selectedSchool == null)
-        {
-            Snackbar.Add("No school selected", Severity.Warning);
-            return;
-        }
-
-        // ensure JS helper exists (runtime injection or external script)
-        await EnsureBlazorDownloadJsAsync();
-        if (!downloadJsRegistered)
-        {
-            Snackbar.Add("Export unavailable: browser download helper not registered.", Severity.Error);
-            return;
-        }
-
-        try
-        {
-            // 1) Get fresh department totals from DB (authoritative)
-            var deptTotals = await schoolService.GetDepartmentTotalsAsync(selectedSchool.Id);
-            // build a lookup map: deptId -> total
-            var deptTotalsLookup = deptTotals.ToDictionary(x => x.DepartmentId, x => x.TotalHours);
-
-            // 2) Apply filter/search/hide-zero in the same way the UI does
-            var visibleDepartments = (selectedSchool?.Departments ?? Enumerable.Empty<Department>())
-                .Where(d => string.IsNullOrWhiteSpace(searchTerm) || d.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                .Where(d => !hideZeroDepartments || (deptTotalsLookup.TryGetValue(d.Id, out var t) && t > 0))
-                .ToList();
-
-            // 3) Build CSV
-            var sb = new StringBuilder();
-            sb.AppendLine($"\"School: {selectedSchool.Name}\"");
-            sb.AppendLine($"\"Exported\",\"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\"");
-            sb.AppendLine();
-            sb.AppendLine("\"Department\",\"ProgramsCount\",\"DeptTotalHours\"");
-
-            foreach (var d in visibleDepartments)
-            {
-                var progCount = d.ProgramsOfStudy?.Count ?? 0;
-                var deptTotal = deptTotalsLookup.TryGetValue(d.Id, out var tot) ? tot : 0M;
-                var safeName = (d.Name ?? string.Empty).Replace("\"", "\"\"");
-                sb.AppendLine($"\"{safeName}\",{progCount},{deptTotal}");
-            }
-
-            // 4) If a department is selected (donut slice), append an up-to-date program breakdown from DB
-            if (SelectedIndex >= 0 && SelectedIndex < visibleDeptIds.Count)
-            {
-                var deptId = visibleDeptIds[SelectedIndex];
-                var dept = selectedSchool.Departments?.FirstOrDefault(dd => dd.Id == deptId);
-                var deptName = dept?.Name ?? $"Department {deptId}";
-
-                sb.AppendLine();
-                sb.AppendLine($"\"Program breakdown for: {deptName}\"");
-                sb.AppendLine("\"Program\",\"ProgramTotalHours\"");
-
-                // Try to use already loaded programData/programLabels if they match selected dept and are non-empty
-                var usedPrograms = false;
-                if (programLabels != null && programData != null && programLabels.Length == programData.Count && programData.Count > 0)
-                {
-                    // append from UI data
-                    for (int i = 0; i < programLabels.Length; i++)
-                    {
-                        var pname = (programLabels[i] ?? "").Replace("\"", "\"\"");
-                        var phours = programData[i];
-                        sb.AppendLine($"\"{pname}\",{phours}");
-                    }
-                    usedPrograms = true;
-                }
-
-                // fallback: fetch fresh program totals from DB
-                if (!usedPrograms)
-                {
-                    try
-                    {
-                        var progs = await schoolService.GetProgramTotalsByDepartmentAsync(deptId);
-                        foreach (var p in progs)
-                        {
-                            var pname = (p.ProgramName ?? "").Replace("\"", "\"\"");
-                            sb.AppendLine($"\"{pname}\",{p.TotalHours}");
-                        }
-                    }
-                    catch
-                    {
-                        // ignore - CSV will just not include program details
-                    }
-                }
-            }
-
-            // 5) Download the CSV (UTF-8 BOM so Excel picks up encoding)
-            var csvBytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-            var bom = new byte[] { 0xEF, 0xBB, 0xBF };
-            var withBom = new byte[bom.Length + csvBytes.Length];
-            Buffer.BlockCopy(bom, 0, withBom, 0, bom.Length);
-            Buffer.BlockCopy(csvBytes, 0, withBom, bom.Length, csvBytes.Length);
-
-            var base64 = Convert.ToBase64String(withBom);
-            var fileName = $"school-{selectedSchool.Id}-{DateTime.Now:yyyyMMddHHmmss}.csv";
-
-            await JS.InvokeVoidAsync("blazorDownloadFile", fileName, base64, "text/csv;charset=utf-8;");
-            Snackbar.Add($"CSV prepared: {fileName}", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Export failed: {ex.Message}", Severity.Error);
-        }
-    }
-
-    // department total: fallback only (primary source for UI is deptTotalsMap)
     private decimal GetDepartmentTotalHours(Department d)
     {
         try

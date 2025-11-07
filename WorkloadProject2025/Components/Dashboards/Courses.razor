@@ -4,12 +4,13 @@
 @using System.Collections.Generic
 @using System.Threading.Tasks
 @using System.Text
+@using System.Text.Json
 @using Microsoft.JSInterop
 @using MudBlazor
 @using WorkloadProject2025.Data.Models
+@using WorkloadProject2025.Services
 
 @inject CourseService courseService
-@inject WorkloadService workloadService
 @inject ProgramOfStudyService programService
 @inject IDialogService dialogService
 @inject ISnackbar Snackbar
@@ -17,7 +18,7 @@
 
 <PageTitle>Course Dashboard</PageTitle>
 
-<MudCard Class="mx-auto mt-6" Style="max-width: 1200px;">
+<MudCard Class="mx-auto mt-6" Style="max-width: 1000px;">
     <MudCardHeader>
         <MudText Typo="Typo.h5" Class="font-semibold">Course Dashboard</MudText>
         <MudSpacer />
@@ -35,7 +36,8 @@
                            @bind-Value="SelectedCourseName"
                            Dense="true"
                            Variant="Variant.Outlined"
-                           Clearable="true">
+                           Clearable="true"
+                           ResetValueOnEmptyText="true">
                     @foreach (var name in courseNames)
                     {
                         <MudSelectItem T="string" Value="@name">@name</MudSelectItem>
@@ -52,7 +54,7 @@
         @if (!string.IsNullOrEmpty(selectedCourseName))
         {
             <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.h6">@selectedCourseName</MudText>
+                <MudText Typo="Typo.h6">@GetDisplayTitle(selectedCourseName)</MudText>
 
                 <MudGrid Class="mt-3">
                     <MudItem Xs="12" Md="6">
@@ -103,20 +105,6 @@
                     </MudItem>
                 </MudGrid>
 
-                @* Faculty distribution chart *@
-                <div class="mt-4">
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Faculty Workload Distribution</MudText>
-                    @if (facultyData != null && facultyData.Any() && facultyData.Any(x => x > 0))
-                    {
-                        <MudChart ChartType="ChartType.Pie" Width="100%" Height="360px" InputData="facultyData.ToArray()" InputLabels="facultyLabels" />
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.body2" Class="text-secondary">No faculty workload data available for this course.</MudText>
-                    }
-                </div>
-
-                @* Workload details table *@
                 <MudGrid Class="mt-4">
                     <MudItem Xs="12" Md="12">
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Workload Details</MudText>
@@ -166,8 +154,9 @@
     private CourseDetail currentCourse = new("", 0M, "", "");
     private List<FacultyTotal> facultyTotals = new();
     private List<WorkloadDetail> workloadDetails = new();
-    private List<double> facultyData = new();
-    private string[] facultyLabels = Array.Empty<string>();
+
+    // TermId -> TermName map
+    private Dictionary<int, string> termMap = new();
 
     private string SelectedCourseName
     {
@@ -183,6 +172,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadCourseNamesAsync();
+
         if (courseNames.Any())
             SelectedCourseName = courseNames.First();
     }
@@ -192,6 +182,7 @@
         try
         {
             var courses = await courseService.GetAllAsync();
+
             courseNames = courses
                 .Where(c => !string.IsNullOrWhiteSpace(c.Name))
                 .Select(c => c.Name.Trim())
@@ -199,8 +190,31 @@
                 .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
-            // Calculate total course hours
-            totalCourseHours = courses.Sum(c => c.Hours ?? 0);
+            // calculate total hours using Hours property if present, otherwise sum workloads
+            totalCourseHours = 0M;
+            var workloads = new List<Workload>();
+            try { workloads = await courseService.GetAllWorkloadsAsync(); } catch { workloads = new List<Workload>(); }
+
+            foreach (var c in courses)
+            {
+                decimal h = 0M;
+                try
+                {
+                    var hv = c.GetType().GetProperty("Hours")?.GetValue(c);
+                    if (hv is int hi) h = hi;
+                    else if (hv is decimal hd) h = hd;
+                    else if (hv is double hdbl) h = (decimal)hdbl;
+                    else h = workloads.Where(w => w.CourseId == c.Id).Sum(w => (w.Hours ?? 0));
+                }
+                catch
+                {
+                    h = workloads.Where(w => w.CourseId == c.Id).Sum(w => (w.Hours ?? 0));
+                }
+                totalCourseHours += h;
+            }
+
+            // load term map
+            try { termMap = (await courseService.GetDistinctTermIdNameMapAsync()).ToDictionary(k => k.Key, k => k.Value); } catch { termMap = new(); }
         }
         catch (Exception ex)
         {
@@ -210,6 +224,49 @@
         }
     }
 
+    private string GetCourseTermNameFromCourse(Course c)
+    {
+        try
+        {
+            if (c == null) return "Unknown";
+
+            var termProp = c.GetType().GetProperty("Term");
+            if (termProp != null)
+            {
+                var termObj = termProp.GetValue(c);
+                if (termObj != null)
+                {
+                    var nameProp = termObj.GetType().GetProperty("Name");
+                    if (nameProp != null)
+                    {
+                        var val = nameProp.GetValue(termObj) as string;
+                        if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+                    }
+                }
+            }
+
+            var termNameProp = c.GetType().GetProperty("TermName");
+            if (termNameProp != null)
+            {
+                var val = termNameProp.GetValue(c) as string;
+                if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+            }
+
+            var termIdProp = c.GetType().GetProperty("TermId");
+            if (termIdProp != null)
+            {
+                var idVal = termIdProp.GetValue(c);
+                if (idVal != null && int.TryParse(idVal.ToString(), out var tid))
+                {
+                    if (termMap != null && termMap.TryGetValue(tid, out var mapped)) return mapped;
+                    return tid.ToString();
+                }
+            }
+        }
+        catch { }
+        return "Unknown";
+    }
+
     private async Task LoadSelectedCourseByNameAsync(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -217,8 +274,6 @@
             currentCourse = new("", 0M, "", "");
             facultyTotals.Clear();
             workloadDetails.Clear();
-            facultyData.Clear();
-            facultyLabels = Array.Empty<string>();
             StateHasChanged();
             return;
         }
@@ -228,9 +283,13 @@
 
         try
         {
-            // Load all courses with this name
+            if (termMap == null || !termMap.Any())
+            {
+                try { termMap = (await courseService.GetDistinctTermIdNameMapAsync()).ToDictionary(k => k.Key, k => k.Value); } catch { termMap = new(); }
+            }
+
             var courses = await courseService.GetAllAsync();
-            var course = courses.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            var course = courses.FirstOrDefault(c => string.Equals(c.Name?.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase));
 
             if (course == null)
             {
@@ -238,58 +297,69 @@
                 return;
             }
 
-            // Load workloads for this course
-            List<Workload> workloads;
-            try
-            {
-                var allWorkloads = await workloadService.GetAllAsync();
-                workloads = allWorkloads.Where(w => w.CourseId == course.Id).ToList();
-            }
-            catch
-            {
-                workloads = new List<Workload>();
-            }
+            List<Workload> matchedWorkloads;
+            try { matchedWorkloads = await courseService.GetWorkloadsByCourseIdAsync(course.Id); } catch { matchedWorkloads = new List<Workload>(); }
 
-            // Get program name
+            // program name
             string programName = "Unknown";
-            string termName = "Unknown";
             try
             {
-                if (course.Program != null)
+                var progProp = course.GetType().GetProperty("Program");
+                if (progProp != null)
                 {
-                    programName = course.Program.Name ?? "Unknown";
-                }
-                else if (course.ProgramId.HasValue)
-                {
-                    var programs = await programService.GetAllAsync();
-                    var program = programs.FirstOrDefault(p => p.Id == course.ProgramId.Value);
-                    programName = program?.Name ?? "Unknown";
+                    var progObj = progProp.GetValue(course);
+                    if (progObj != null)
+                    {
+                        var nameProp = progObj.GetType().GetProperty("Name");
+                        if (nameProp != null)
+                            programName = nameProp.GetValue(progObj) as string ?? "Unknown";
+                    }
                 }
 
-                if (course.Term != null)
+                if (programName == "Unknown" && course.GetType().GetProperty("ProgramId") != null)
                 {
-                    termName = course.Term.Name ?? "Unknown";
+                    var pidProp = course.GetType().GetProperty("ProgramId")?.GetValue(course);
+                    if (pidProp != null && int.TryParse(pidProp.ToString(), out var pid))
+                    {
+                        var programs = await programService.GetAllAsync();
+                        var prog = programs.FirstOrDefault(p => p.Id == pid);
+                        if (prog != null) programName = prog.Name ?? "Unknown";
+                    }
                 }
             }
             catch { }
 
-            // Set course details
-            currentCourse = new CourseDetail(
-                course.Name ?? "Unknown",
-                course.Hours ?? 0M,
-                programName,
-                termName
-            );
+            string termName = GetCourseTermNameFromCourse(course);
 
-            // Build faculty totals
-            var facultyGroups = workloads
+            decimal ch = 0M;
+            try
+            {
+                var hv = course.GetType().GetProperty("Hours")?.GetValue(course);
+                if (hv is int hi) ch = hi;
+                else if (hv is decimal hd) ch = hd;
+                else if (hv is double hdbl) ch = (decimal)hdbl;
+                else ch = matchedWorkloads.Sum(w => (w.Hours ?? 0));
+            }
+            catch
+            {
+                ch = matchedWorkloads.Sum(w => (w.Hours ?? 0));
+            }
+
+            currentCourse = new CourseDetail(course.Name ?? "Unknown", ch, programName, termName);
+
+            var facultyGroups = matchedWorkloads
                 .GroupBy(w =>
                 {
                     if (w.FacultyMember != null)
                     {
-                        return $"{w.FacultyMember.FirstName} {w.FacultyMember.LastName}".Trim();
+                        var first = w.FacultyMember.GetType().GetProperty("FirstName")?.GetValue(w.FacultyMember) as string;
+                        var last = w.FacultyMember.GetType().GetProperty("LastName")?.GetValue(w.FacultyMember) as string;
+                        var n = $"{first} {last}".Trim();
+                        if (!string.IsNullOrWhiteSpace(n)) return n;
+                        var nameProp = w.FacultyMember.GetType().GetProperty("Name")?.GetValue(w.FacultyMember) as string;
+                        if (!string.IsNullOrWhiteSpace(nameProp)) return nameProp;
                     }
-                    return (w.FacultyEmail ?? "Unknown");
+                    return w.FacultyEmail ?? "Unknown";
                 })
                 .Select(g => new
                 {
@@ -301,16 +371,15 @@
                 .ToList();
 
             facultyTotals = facultyGroups.Select(f => new FacultyTotal(f.FacultyName, f.TotalHours, f.Section)).ToList();
-            facultyLabels = facultyTotals.Select(f => f.FacultyName).ToArray();
-            facultyData = facultyTotals.Select(f => (double)f.Hours).ToList();
 
-            // Build workload details
-            workloadDetails = workloads.Select(w => new WorkloadDetail(
-                w.FacultyMember != null ? 
-                    $"{w.FacultyMember.FirstName} {w.FacultyMember.LastName}".Trim() :
+            workloadDetails = matchedWorkloads.Select(w => new WorkloadDetail(
+                w.FacultyMember != null ?
+                    ((w.FacultyMember.GetType().GetProperty("FirstName")?.GetValue(w.FacultyMember) as string ?? "") + " " +
+                     (w.FacultyMember.GetType().GetProperty("LastName")?.GetValue(w.FacultyMember) as string ?? "")).Trim()
+                    :
                     (w.FacultyEmail ?? "Unknown"),
                 w.Section ?? "",
-                w.CourseType.ToString(),
+                w.GetType().GetProperty("CourseType")?.GetValue(w)?.ToString() ?? "",
                 w.Hours ?? 0M
             )).OrderBy(w => w.FacultyName).ToList();
         }
@@ -320,14 +389,25 @@
             currentCourse = new("", 0M, "", "");
             facultyTotals = new List<FacultyTotal>();
             workloadDetails = new List<WorkloadDetail>();
-            facultyData.Clear();
-            facultyLabels = Array.Empty<string>();
         }
         finally
         {
             isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private string GetDisplayTitle(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return string.Empty;
+        // Show only the human-readable title after a dash if present: "ACCT101 - Financial Accounting" -> "Financial Accounting"
+        var parts = fullName.Split(new[] { '-' }, 2);
+        if (parts.Length == 2)
+        {
+            var title = parts[1].Trim();
+            if (!string.IsNullOrWhiteSpace(title)) return title;
+        }
+        return fullName;
     }
 
     private async Task ExportSelectedCourseCsv()
@@ -353,22 +433,12 @@
             sb.AppendLine($"\"Term\",\"{currentCourse.TermName}\"");
 
             sb.AppendLine();
-            sb.AppendLine("\"Faculty\",\"Workload Hours\",\"Section\"");
+            sb.AppendLine("\"Faculty\",\"Section\",\"Hours\"");
             foreach (var f in facultyTotals)
             {
                 var safeName = (f.FacultyName ?? "").Replace("\"", "\"\"");
                 var safeSection = (f.Section ?? "").Replace("\"", "\"\"");
-                sb.AppendLine($"\"{safeName}\",{f.Hours},\"{safeSection}\"");
-            }
-
-            sb.AppendLine();
-            sb.AppendLine("\"Faculty\",\"Section\",\"Course Type\",\"Hours\"");
-            foreach (var w in workloadDetails)
-            {
-                var safeName = (w.FacultyName ?? "").Replace("\"", "\"\"");
-                var safeSection = (w.Section ?? "").Replace("\"", "\"\"");
-                var safeType = (w.CourseType ?? "").Replace("\"", "\"\"");
-                sb.AppendLine($"\"{safeName}\",\"{safeSection}\",\"{safeType}\",{w.Hours}");
+                sb.AppendLine($"\"{safeName}\",\"{safeSection}\",{f.Hours}");
             }
 
             var csvBytes = Encoding.UTF8.GetBytes(sb.ToString());
