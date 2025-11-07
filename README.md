@@ -19,9 +19,9 @@ MAKE YOUR CHANGES ON THE SEPARATE BRANCH WITH YOUR NAME
 
 - [ ] Display entire grand total of all workload hours per program on the Program Dashboard (Aiden)
 
-- [ ] Fix functionality for CSV exporting from each respective dashboard (Balkaran)
+- [x] Fix functionality for CSV exporting from each respective dashboard (Balkaran)
 
-- [ ] Add a Course Dashboard page? (Balkaran)
+- [x] Add a Course Dashboard page? (Balkaran)
 
 - [ ] Display all Faculty in a respective Program on the Program Dashboard (add to other dashboards?) (Josh)
 
