@@ -57,7 +57,7 @@
         <MudGrid>
             <!-- Left: charts -->
             <MudItem Xs="12" Md="5">
-                <MudPaper Class="pa-4" Elevation="1">
+@*                 <MudPaper Class="pa-4" Elevation="1">
                     <MudText Typo="Typo.h6">Workload Level Distribution</MudText>
                     @if (workloadPieSeries.Any())
                     {
@@ -77,18 +77,18 @@
                     {
                         <MudChart ChartType="ChartType.Line" ChartSeries="@trendSeries" XAxisLabels="@trendLabels" Width="100%" Height="260px" />
                     }
-                </MudPaper>
+                </MudPaper> *@
             </MudItem>
 
             <!-- Right: table + export -->
             <MudItem Xs="12" Md="7">
                 <MudPaper Class="pa-4" Elevation="1">
-                    <div class="d-flex justify-between align-center mb-2">
+                    @* <div class="d-flex justify-between align-center mb-2">
                         <MudText Typo="Typo.h6">Faculty Workload (per professor)</MudText>
                         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.FileDownload" OnClick="ExportAllFacultyCsv" Disabled="@(faculty2 == null || !faculty2.Any())">Export All</MudButton>
                     </div>
 
-                    <MudTable T="FacultyModel" Items="VisibleFaculty" Hover="true" Dense="true" Bordered="true" OnRowClick="OnFacultyRowClick">
+                    <MudTable Items="VisibleFaculty" Hover="true" Dense="true" Bordered="true" OnRowClick="OnFacultyRowClick">
                         <HeaderContent>
                             <MudTh>Faculty</MudTh>
                             <MudTh>Program</MudTh>
@@ -108,23 +108,25 @@
                                 <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => ExportFacultyCsv(f))">Export</MudButton>
                             </MudTd>
                         </RowTemplate>
-                    </MudTable>
+                    </MudTable> *@
                 </MudPaper>
             </MudItem>
         </MudGrid>
 
         <!-- Selected professor detail (sticky) -->
-        <MudPaper Class="pa-4 mt-4" Elevation="1" Style="position: sticky; top: 16px;">
+        <MudPaper Class="pa-4 mt-4" Style="position: sticky; top: 16px;">
             @if (selectedFaculty != null)
             {
-                <MudText Typo="Typo.h6">@selectedFaculty.Name</MudText>
-                <MudText Typo="Typo.body2">@selectedFaculty.Email • @selectedFaculty.Phone</MudText>
+                <MudText Typo="Typo.h6">@selectedFaculty.FirstName @selectedFaculty.LastName</MudText>
+                <MudText Typo="Typo.body2">@selectedFaculty.Email • @selectedFaculty.PhoneNumber</MudText>
+
                 <MudDivider Class="my-2" />
+
                 <MudText Typo="Typo.subtitle2">Schedule / Courses</MudText>
-                @foreach (var c in selectedFaculty.Courses)
+@*                 @foreach (var c in selectedFaculty.Courses)
                 {
                     <MudPaper Class="pa-2 mb-2" Elevation="0">
-                        <MudText Typo="Typo.subtitle2">@c.CourseName</MudText>
+                        <MudText Typo="Typo.subtitle2">@c.Name</MudText>
                         <MudText Typo="Typo.caption">@c.DeliveryType — @c.Hours.ToString("F1") hrs • Students: @c.Students</MudText>
                     </MudPaper>
                 }
@@ -133,7 +135,7 @@
                 @if (selectedFacultyTrendSeries.Any())
                 {
                     <MudChart ChartType="ChartType.Line" ChartSeries="@selectedFacultyTrendSeries" XAxisLabels="@trendLabels" Width="100%" Height="200px" />
-                }
+                } *@
             }
             else
             {
@@ -260,6 +262,7 @@
 @code {
 
     private ProgramOfStudy? selection;
+    private Faculty? selectedFaculty;
     private double averageWorkloadHours;
     private int totalFaculty;
     private int totalCourses;
@@ -287,9 +290,6 @@
         programs = await programService.GetAllAsync();
         courses = await courseService.GetAllAsync();
         terms = await termService.GetAllAsync();
-
-        SeedSampleData();
-        Recalculate();
 
         foreach (var w in workloads)
         {
@@ -403,179 +403,116 @@
 
 
 
-
-
-
-
-    public class FacultyModel
-    {
-        public string Name { get; set; } = "";
-        public string Program { get; set; } = "";
-        public int CoursesCount { get; set; }
-        public double WorkloadHours { get; set; }
-        public int Students { get; set; }
-        public string Email { get; set; } = "";
-        public string Phone { get; set; } = "";
-        public List<CourseScheduleItem> Courses { get; set; } = new();
-    }
-
-    public class CourseScheduleItem
-    {
-        public string CourseName { get; set; } = "";
-        public string DeliveryType { get; set; } = "";
-        public double Hours { get; set; }
-        public int Students { get; set; }
-    }
+    // public class FacultyModel
+    // {
+    //     public string Name { get; set; } = "";
+    //     public string Program { get; set; } = "";
+    //     public int CoursesCount { get; set; }
+    //     public double WorkloadHours { get; set; }
+    //     public int Students { get; set; }
+    //     public string Email { get; set; } = "";
+    //     public string Phone { get; set; } = "";
+    //     public List<Course> Courses { get; set; } = new();
+    // }
 
     // State
-    private List<FacultyModel> faculty2 = new();
-    private FacultyModel? selectedFaculty;
+    
 
-    // VisibleFaculty (used by table) — deterministic filter/search (kept simple)
-    private IEnumerable<FacultyModel> VisibleFaculty => faculty2
-        .Where(f => string.IsNullOrWhiteSpace(fProgramFilter) || f.Program == fProgramFilter)
-        .OrderByDescending(f => f.WorkloadHours);
+    //// VisibleFaculty (used by table) — deterministic filter/search (kept simple)
+    // private IEnumerable<FacultyModel> VisibleFaculty => faculty2
+    //     .Where(f => string.IsNullOrWhiteSpace(fProgramFilter) || f.Program == fProgramFilter)
+    //     .OrderByDescending(f => f.WorkloadHours);
 
-    // simple program filter backing field (if you'd like to expose UI for program filter later)
-    private string fProgramFilter = string.Empty;
+    // // simple program filter backing field (if you'd like to expose UI for program filter later)
+    // private string fProgramFilter = string.Empty;
 
-    // Charts
-    private List<ChartSeries> workloadPieSeries = new();
-    private string[] workloadPieLabels = Array.Empty<string>();
+    // // Charts
+    // private List<ChartSeries> workloadPieSeries = new();
+    // private string[] workloadPieLabels = Array.Empty<string>();
 
-    private List<ChartSeries> trendSeries = new();
-    private string[] trendLabels = new[] { "Fall 2023", "Spring 2024", "Summer 2024", "Fall 2024" };
+    // private List<ChartSeries> trendSeries = new();
+    // private string[] trendLabels = new[] { "Fall 2023", "Spring 2024", "Summer 2024", "Fall 2024" };
 
-    private List<ChartSeries> selectedFacultyTrendSeries = new();
+    //private List<ChartSeries> selectedFacultyTrendSeries = new();
 
-    private void SeedSampleData()
-    {
-        faculty2 = new List<FacultyModel>
-        {
-            new FacultyModel
-            {
-                Name = "John Smith", Program = "Computer Science", CoursesCount = 3, WorkloadHours = 14.0, Students = 80,
-                Email = "john.smith@uni.edu", Phone = "555-0101",
-                Courses = new List<CourseScheduleItem>
-                {
-                    new CourseScheduleItem{CourseName="CS101", DeliveryType="Lecture", Hours=5, Students=30},
-                    new CourseScheduleItem{CourseName="CS201", DeliveryType="Lab", Hours=3, Students=25},
-                    new CourseScheduleItem{CourseName="CS301", DeliveryType="Lecture", Hours=6, Students=25}
-                }
-            },
-            new FacultyModel
-            {
-                Name = "Jane Doe", Program = "Information Technology", CoursesCount = 2, WorkloadHours = 10.5, Students = 55,
-                Email = "jane.doe@uni.edu", Phone = "555-0102",
-                Courses = new List<CourseScheduleItem>
-                {
-                    new CourseScheduleItem{CourseName="IT100", DeliveryType="Lecture", Hours=5.5, Students=30},
-                    new CourseScheduleItem{CourseName="IT210", DeliveryType="Lecture", Hours=5, Students=25}
-                }
-            },
-            new FacultyModel
-            {
-                Name = "Alice Williams", Program = "Business", CoursesCount = 4, WorkloadHours = 16.5, Students = 120,
-                Email = "alice.williams@uni.edu", Phone = "555-0104",
-                Courses = new List<CourseScheduleItem>
-                {
-                    new CourseScheduleItem{CourseName="BUS101", DeliveryType="Lecture", Hours=4, Students=30},
-                    new CourseScheduleItem{CourseName="BUS210", DeliveryType="Lecture", Hours=4.5, Students=30},
-                    new CourseScheduleItem{CourseName="BUS305", DeliveryType="Lecture", Hours=4, Students=30},
-                    new CourseScheduleItem{CourseName="BUS410", DeliveryType="Seminar", Hours=4, Students=30}
-                }
-            },
-            new FacultyModel
-            {
-                Name = "Bob Johnson", Program = "Accounting", CoursesCount = 2, WorkloadHours = 8.0, Students = 45,
-                Email = "bob.johnson@uni.edu", Phone = "555-0103",
-                Courses = new List<CourseScheduleItem>
-                {
-                    new CourseScheduleItem{CourseName="ACCT101", DeliveryType="Lecture", Hours=4, Students=25},
-                    new CourseScheduleItem{CourseName="ACCT201", DeliveryType="Lecture", Hours=4, Students=20}
-                }
-            }
-        };
-    }
+    // private void Recalculate()
+    // {
+    //     BuildWorkloadPie();
+    //     BuildTrend();
+    //     BuildSelectedFacultyTrend(faculty2.OrderByDescending(f => f.WorkloadHours).FirstOrDefault());
+    // }
 
-    private void Recalculate()
-    {
-        BuildWorkloadPie();
-        BuildTrend();
-        BuildSelectedFacultyTrend(faculty2.OrderByDescending(f => f.WorkloadHours).FirstOrDefault());
-    }
+    // private void BuildWorkloadPie()
+    // {
+    //     var low = faculty2.Count(f => f.WorkloadHours <= 10);
+    //     var med = faculty2.Count(f => f.WorkloadHours > 10 && f.WorkloadHours <= 15);
+    //     var high = faculty2.Count(f => f.WorkloadHours > 15);
+    //     workloadPieLabels = new[] { "Low (<=10)", "Medium (10-15)", "High (>15)" };
+    //     workloadPieSeries = new List<ChartSeries> { new ChartSeries { Name = "Workload Levels", Data = new double[] { low, med, high } } };
+    // }
 
-    private void BuildWorkloadPie()
-    {
-        var low = faculty2.Count(f => f.WorkloadHours <= 10);
-        var med = faculty2.Count(f => f.WorkloadHours > 10 && f.WorkloadHours <= 15);
-        var high = faculty2.Count(f => f.WorkloadHours > 15);
-        workloadPieLabels = new[] { "Low (<=10)", "Medium (10-15)", "High (>15)" };
-        workloadPieSeries = new List<ChartSeries> { new ChartSeries { Name = "Workload Levels", Data = new double[] { low, med, high } } };
-    }
+    // private void BuildTrend()
+    // {
+    //     var top = faculty2.OrderByDescending(f => f.WorkloadHours).Take(3).ToList();
+    //     trendSeries = top.Select(f => new ChartSeries
+    //     {
+    //         Name = f.Name,
+    //         Data = new double[]
+    //         {
+    //             Math.Round(f.WorkloadHours * 0.9, 1),
+    //             Math.Round(f.WorkloadHours * 0.95, 1),
+    //             Math.Round(f.WorkloadHours * 1.0, 1),
+    //             Math.Round(f.WorkloadHours * 1.05, 1)
+    //         }
+    //     }).ToList();
+    // }
 
-    private void BuildTrend()
-    {
-        var top = faculty2.OrderByDescending(f => f.WorkloadHours).Take(3).ToList();
-        trendSeries = top.Select(f => new ChartSeries
-        {
-            Name = f.Name,
-            Data = new double[]
-            {
-                Math.Round(f.WorkloadHours * 0.9, 1),
-                Math.Round(f.WorkloadHours * 0.95, 1),
-                Math.Round(f.WorkloadHours * 1.0, 1),
-                Math.Round(f.WorkloadHours * 1.05, 1)
-            }
-        }).ToList();
-    }
+    // private void BuildSelectedFacultyTrend(Faculty? f)
+    // {
+    //     selectedFaculty = f;
+    //     selectedFacultyTrendSeries = new List<ChartSeries>();
+    //     if (f == null) return;
+    //     selectedFacultyTrendSeries = new List<ChartSeries>
+    //     {
+    //         new ChartSeries { Name = f.FirstName, Data = new double[] {
+    //             Math.Round(f.WorkloadHours * 0.9, 1),
+    //             Math.Round(f.WorkloadHours * 0.95, 1),
+    //             Math.Round(f.WorkloadHours * 1.0, 1),
+    //             Math.Round(f.WorkloadHours * 1.05, 1)
+    //         } }
+    //     };
+    // }
 
-    private void BuildSelectedFacultyTrend(FacultyModel? f)
-    {
-        selectedFaculty = f;
-        selectedFacultyTrendSeries = new List<ChartSeries>();
-        if (f == null) return;
-        selectedFacultyTrendSeries = new List<ChartSeries>
-        {
-            new ChartSeries { Name = f.Name, Data = new double[] {
-                Math.Round(f.WorkloadHours * 0.9, 1),
-                Math.Round(f.WorkloadHours * 0.95, 1),
-                Math.Round(f.WorkloadHours * 1.0, 1),
-                Math.Round(f.WorkloadHours * 1.05, 1)
-            } }
-        };
-    }
+    // private void OnFacultyRowClick(TableRowClickEventArgs<FacultyModel> args)
+    // {
+    //     BuildSelectedFacultyTrend(args.Item);
+    // }
 
-    private void OnFacultyRowClick(TableRowClickEventArgs<FacultyModel> args)
-    {
-        BuildSelectedFacultyTrend(args.Item);
-    }
+    // private void ShowFaculty(FacultyModel f)
+    // {
+    //     var courses = string.Join(", ", f.Courses.Select(c => c.Name));
+    //     Snackbar.Add($"{f.Name} — {f.Program}: {f.CoursesCount} courses ({courses}) • {f.WorkloadHours:F1} hrs • {f.Students} students", Severity.Info);
+    // }
 
-    private void ShowFaculty(FacultyModel f)
-    {
-        var courses = string.Join(", ", f.Courses.Select(c => c.CourseName));
-        Snackbar.Add($"{f.Name} — {f.Program}: {f.CoursesCount} courses ({courses}) • {f.WorkloadHours:F1} hrs • {f.Students} students", Severity.Info);
-    }
+    // private async Task ExportFacultyCsv(FacultyModel f)
+    // {
+    //     var sb = new StringBuilder();
+    //     sb.AppendLine("Name,Program,Courses,WorkloadHours,Students,Email,Phone");
+    //     var courses = string.Join(" | ", f.Courses.Select(c => c.Name));
+    //     sb.AppendLine($"\"{f.Name}\",\"{f.Program}\",\"{courses}\",{f.WorkloadHours},{f.Students},\"{f.Email}\",\"{f.Phone}\"");
+    //     var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+    //     await JS.InvokeVoidAsync("blazorDownloadFile", $"faculty-{f.Name}-{DateTime.Now:yyyyMMdd}.csv", Convert.ToBase64String(bytes), "text/csv");
+    //     Snackbar.Add("Exported CSV", Severity.Success);
+    // }
 
-    private async Task ExportFacultyCsv(FacultyModel f)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("Name,Program,Courses,WorkloadHours,Students,Email,Phone");
-        var courses = string.Join(" | ", f.Courses.Select(c => c.CourseName));
-        sb.AppendLine($"\"{f.Name}\",\"{f.Program}\",\"{courses}\",{f.WorkloadHours},{f.Students},\"{f.Email}\",\"{f.Phone}\"");
-        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-        await JS.InvokeVoidAsync("blazorDownloadFile", $"faculty-{f.Name}-{DateTime.Now:yyyyMMdd}.csv", Convert.ToBase64String(bytes), "text/csv");
-        Snackbar.Add("Exported CSV", Severity.Success);
-    }
-
-    private async Task ExportAllFacultyCsv()
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("Name,Program,Courses,WorkloadHours,Students,Email,Phone");
-        foreach (var f in faculty2)
-            sb.AppendLine($"\"{f.Name}\",\"{f.Program}\",{f.CoursesCount},{f.WorkloadHours},{f.Students},\"{f.Email}\",\"{f.Phone}\"");
-        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-        await JS.InvokeVoidAsync("blazorDownloadFile", $"workload-all-{DateTime.Now:yyyyMMdd}.csv", Convert.ToBase64String(bytes), "text/csv");
-        Snackbar.Add("Exported CSV", Severity.Success);
-    }
+    // private async Task ExportAllFacultyCsv()
+    // {
+    //     var sb = new StringBuilder();
+    //     sb.AppendLine("Name,Program,Courses,WorkloadHours,Students,Email,Phone");
+    //     foreach (var f in faculty2)
+    //         sb.AppendLine($"\"{f.Name}\",\"{f.Program}\",{f.CoursesCount},{f.WorkloadHours},{f.Students},\"{f.Email}\",\"{f.Phone}\"");
+    //     var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+    //     await JS.InvokeVoidAsync("blazorDownloadFile", $"workload-all-{DateTime.Now:yyyyMMdd}.csv", Convert.ToBase64String(bytes), "text/csv");
+    //     Snackbar.Add("Exported CSV", Severity.Success);
+    // }
 }
