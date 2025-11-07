@@ -164,7 +164,6 @@
 @code {
     private List<School> schools = new();
     private School? selectedSchool;
-    private bool downloadJsRegistered = false;
     private int _selectedSchoolId;
     private int SelectedSchoolId
     {
@@ -209,45 +208,6 @@
     // totals and behavior
     private decimal totalDeptHours = 0M;
     private bool hideZeroDepartments = true;
-    private async Task EnsureBlazorDownloadJsAsync()
-    {
-        if (downloadJsRegistered) return;
-
-        try
-        {
-            // Check if the function exists
-            var exists = await JS.InvokeAsync<bool>("(function(){return !!window.blazorDownloadFile;})");
-            if (!exists)
-            {
-                // Create the function dynamically
-                var js = @"
-                window.blazorDownloadFile = function (fileName, base64Data, contentType) {
-                    try {
-                        var link = document.createElement('a');
-                        link.href = 'data:' + (contentType || 'application/octet-stream') + ';base64,' + base64Data;
-                        link.setAttribute('download', fileName);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        return true;
-                    } catch (err) {
-                        console.error('blazorDownloadFile runtime injection failed', err);
-                        return false;
-                    }
-                };
-            ";
-                // evaluate the script in the browser
-                await JS.InvokeVoidAsync("eval", js);
-            }
-
-            downloadJsRegistered = true;
-        }
-        catch
-        {
-            // ignore — if this fails the export will show a Snackbar error later
-            downloadJsRegistered = false;
-        }
-    }
     // map of departmentId -> computed total hours (used by table and chart)
     private Dictionary<int, decimal> deptTotalsMap = new Dictionary<int, decimal>();
 
@@ -516,14 +476,6 @@
         if (selectedSchool == null)
         {
             Snackbar.Add("No school selected", Severity.Warning);
-            return;
-        }
-
-        // ensure JS helper exists (runtime injection or external script)
-        await EnsureBlazorDownloadJsAsync();
-        if (!downloadJsRegistered)
-        {
-            Snackbar.Add("Export unavailable: browser download helper not registered.", Severity.Error);
             return;
         }
 
